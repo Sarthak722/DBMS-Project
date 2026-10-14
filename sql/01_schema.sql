@@ -311,3 +311,108 @@ CREATE INDEX idx_clues_room ON clues(room_id);
 CREATE INDEX idx_hint_session ON hint_usage(session_id);
 CREATE INDEX idx_payments_status ON payments(payment_status);
  
+-- =====================================================================
+-- MODULE 2: TEAMS, PLAYERS, BOOKINGS & BILLING SCHEMA
+-- Author: Team Member 2 (Lead Database Architect - Transactional Domain)
+-- Project: Escape Room & Puzzle Hunt Management System (escape_room_db)
+-- Scope: Teams, Players, Game Bookings, Hint Usage, and 1:1 Payments
+-- =====================================================================
+
+USE escape_room_db;
+
+-- 5. TEAM ENTITY
+-- Squads participating in escape room sessions.
+-- 'team_size' is a derived attribute, initialized here and automated later via triggers.
+CREATE TABLE IF NOT EXISTS teams (
+    team_id INT AUTO_INCREMENT,
+    team_name VARCHAR(100) NOT NULL,
+    team_size INT NOT NULL DEFAULT 0 COMMENT 'Derived attribute: reflects count of active players',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_teams PRIMARY KEY (team_id),
+    CONSTRAINT chk_team_size CHECK (team_size >= 0)
+);
+
+-- 6. PLAYERS ENTITY
+-- Customer accounts participating in escape rooms.
+-- N:1 member_of relationship with TEAM, including 'joined_date' relationship attribute.
+CREATE TABLE IF NOT EXISTS players (
+    player_id INT AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    phone VARCHAR(20) NOT NULL,
+    age INT NULL COMMENT 'Player age',
+    team_id INT NULL COMMENT 'FK referencing TEAM for member_of relationship',
+    joined_date DATE NULL COMMENT 'Relationship attribute of member_of relationship',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_players PRIMARY KEY (player_id),
+    CONSTRAINT fk_players_team 
+        FOREIGN KEY (team_id) REFERENCES teams(team_id) 
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT chk_player_age CHECK (age IS NULL OR (age >= 5 AND age <= 120))
+);
+
+-- 7. BOOKING ENTITY
+-- Represents a game booking session taken by a Team, hosted by Staff in a Room.
+-- session_id is a unique code attribute of the booking.
+CREATE TABLE IF NOT EXISTS bookings (
+    booking_id INT AUTO_INCREMENT,
+    session_id VARCHAR(50) NOT NULL UNIQUE COMMENT 'Unique session code / identifier',
+    staff_id INT NOT NULL,
+    room_id INT NOT NULL,
+    forum_id INT NULL COMMENT 'Optional discussion / session review forum identifier',
+    team_id INT NOT NULL,
+    start_time DATETIME NOT NULL,
+    slot_end_time DATETIME NOT NULL,
+    complete_time TIME NULL COMMENT 'Actual completion time taken by the team',
+    status ENUM('Scheduled', 'In-Progress', 'Completed', 'Cancelled', 'No-Show') NOT NULL DEFAULT 'Scheduled',
+    outcome ENUM('Pending', 'Escaped', 'Failed', 'Timeout') NOT NULL DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_bookings PRIMARY KEY (booking_id),
+    CONSTRAINT uq_bookings_session_id UNIQUE (session_id),
+    CONSTRAINT fk_bookings_staff 
+        FOREIGN KEY (staff_id) REFERENCES staff(staff_id) 
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bookings_room 
+        FOREIGN KEY (room_id) REFERENCES rooms(room_id) 
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT fk_bookings_team 
+        FOREIGN KEY (team_id) REFERENCES teams(team_id) 
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT chk_booking_slots CHECK (slot_end_time > start_time)
+);
+
+-- 8. HINT_USAGE ENTITY
+-- Tracks hints requested by a team during an active game session for a specific clue.
+CREATE TABLE IF NOT EXISTS hint_usage (
+    hint_usage_id INT AUTO_INCREMENT,
+    clue_id INT NOT NULL,
+    session_id VARCHAR(50) NOT NULL COMMENT 'FK referencing bookings(session_id)',
+    requested_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    hint_no INT NOT NULL DEFAULT 1,
+    CONSTRAINT pk_hint_usage PRIMARY KEY (hint_usage_id),
+    CONSTRAINT fk_hint_usage_clue 
+        FOREIGN KEY (clue_id) REFERENCES clues(clue_id) 
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT fk_hint_usage_session 
+        FOREIGN KEY (session_id) REFERENCES bookings(session_id) 
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT chk_hint_no CHECK (hint_no > 0)
+);
+
+-- 9. PAYMENT ENTITY
+-- Financial transaction ledger.
+-- Enforces strict 1:1 relationship with BOOKING via UNIQUE constraint on session_id.
+CREATE TABLE IF NOT EXISTS payments (
+    payment_id INT AUTO_INCREMENT,
+    session_id VARCHAR(50) NOT NULL UNIQUE COMMENT 'Strict 1:1 relationship with bookings(session_id)',
+    amount DECIMAL(10, 2) NOT NULL,
+    payment_mode ENUM('Cash', 'Credit Card', 'Debit Card', 'UPI', 'Net Banking') NOT NULL,
+    payment_status ENUM('Pending', 'Completed', 'Failed', 'Refunded') NOT NULL DEFAULT 'Pending',
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_payments PRIMARY KEY (payment_id),
+    CONSTRAINT uq_payments_session UNIQUE (session_id),
+    CONSTRAINT fk_payments_session 
+        FOREIGN KEY (session_id) REFERENCES bookings(session_id) 
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT chk_payment_amount CHECK (amount >= 0)
+);
