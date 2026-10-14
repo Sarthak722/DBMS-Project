@@ -515,3 +515,115 @@ BEGIN
     ON DUPLICATE KEY UPDATE amount = room_price;
 END$$
 DELIMITER ;
+
+-- =====================================================================
+-- MODULE 4: PROCEDURES, PERFORMANCE INDEXES & ANALYTICS (PATCH)
+-- Author: Team Member 4 (Database Engineer - Optimization & Analytics Specialist)
+-- Project: Escape Room & Puzzle Hunt Management System (escape_room_db)
+-- Scope: Stored Procedures, B-Tree Indexes & Complex Analytical Joins
+-- =====================================================================
+
+USE escape_room_db;
+
+-- 1. STORED PROCEDURE FOR ATOMIC SESSION CONCLUSION
+DELIMITER $$
+DROP PROCEDURE IF EXISTS sp_complete_game_session$$
+CREATE PROCEDURE sp_complete_game_session(
+    IN in_session_id VARCHAR(50),
+    IN in_completion_time TIME,
+    IN in_outcome VARCHAR(20)
+)
+BEGIN
+    -- Atomically update booking status, actual time taken, and escape outcome
+    UPDATE bookings 
+    SET 
+        status = 'Completed',
+        complete_time = in_completion_time,
+        outcome = in_outcome
+    WHERE session_id = in_session_id;
+    
+    -- Return joined session summary including payment status
+    SELECT 
+        b.session_id,
+        b.status,
+        b.complete_time,
+        b.outcome,
+        p.amount,
+        p.payment_status
+    FROM bookings b
+    LEFT JOIN payments p ON b.session_id = p.session_id
+    WHERE b.session_id = in_session_id;
+END$$
+DELIMITER ;
+
+-- 2. HIGH-PERFORMANCE B-TREE INDEXES
+-- Index 1: Fast collision detection during booking scheduling
+CREATE INDEX IF NOT EXISTS idx_bookings_timeslot ON bookings(room_id, start_time, slot_end_time);
+-- Index 2: Filter bookings by operational status
+CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+-- Index 3: Rapid lookup by player email
+CREATE INDEX IF NOT EXISTS idx_players_email ON players(email);
+-- Index 4: Fast joins on player team membership
+CREATE INDEX IF NOT EXISTS idx_players_team ON players(team_id);
+-- Index 5: Composite index on branch rooms and room availability
+CREATE INDEX IF NOT EXISTS idx_rooms_branch ON rooms(branch_id, status);
+-- Index 6: Fast retrieval of clues by chamber
+CREATE INDEX IF NOT EXISTS idx_clues_room ON clues(room_id);
+-- Index 7: Hint logger retrieval for Game Master console
+CREATE INDEX IF NOT EXISTS idx_hint_session ON hint_usage(session_id);
+-- Index 8: Financial ledger filtering by settlement status
+CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(payment_status);
+
+-- 3. ANALYTICAL QUERIES FOR REPORTING
+
+-- A. Fastest Escape Leaderboard (Hall of Fame)
+-- Ranks teams that escaped by fastest completion time, joined with staff and hint penalties.
+SELECT 
+    t.team_name,
+    r.theme_name,
+    bk.session_id,
+    bk.complete_time,
+    bk.outcome,
+    COUNT(h.hint_usage_id) AS hints_used,
+    s.name AS host_staff
+FROM bookings bk
+JOIN teams t ON bk.team_id = t.team_id
+JOIN rooms r ON bk.room_id = r.room_id
+JOIN staff s ON bk.staff_id = s.staff_id
+LEFT JOIN hint_usage h ON bk.session_id = h.session_id
+WHERE bk.outcome = 'Escaped'
+GROUP BY t.team_name, r.theme_name, bk.session_id, bk.complete_time, bk.outcome, s.name
+ORDER BY bk.complete_time ASC;
+
+-- B. Multi-Table Revenue Aggregation by Branch and Payment Mode
+SELECT 
+    b.name AS branch_name,
+    p.payment_mode,
+    COUNT(p.payment_id) AS total_transactions,
+    SUM(p.amount) AS total_revenue
+FROM payments p
+JOIN bookings bk ON p.session_id = bk.session_id
+JOIN rooms r ON bk.room_id = r.room_id
+JOIN branches b ON r.branch_id = b.branch_id
+WHERE p.payment_status = 'Completed'
+GROUP BY b.name, p.payment_mode
+ORDER BY b.name, total_revenue DESC;
+
+-- C. Nested Query: Rooms with Above-Average Booking Demand
+SELECT 
+    r.room_id,
+    r.theme_name,
+    r.difficulty,
+    COUNT(b.booking_id) AS booking_count
+FROM rooms r
+LEFT JOIN bookings b ON r.room_id = b.room_id
+GROUP BY r.room_id, r.theme_name, r.difficulty
+HAVING COUNT(b.booking_id) >= (
+    SELECT AVG(room_bookings) 
+    FROM (
+        SELECT COUNT(booking_id) AS room_bookings 
+        FROM rooms rm 
+        LEFT JOIN bookings bk ON rm.room_id = bk.room_id 
+        GROUP BY rm.room_id
+    ) AS avg_tbl
+);
