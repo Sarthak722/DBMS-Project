@@ -416,3 +416,102 @@ CREATE TABLE IF NOT EXISTS payments (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT chk_payment_amount CHECK (amount >= 0)
 );
+
+
+
+-- =====================================================================
+-- MODULE 3: AUTOMATION TRIGGERS & ABSTRACTION VIEWS (PATCH)
+-- Author: Team Member 3 (Database Engineer - Triggers & Views Specialist)
+-- Project: Escape Room & Puzzle Hunt Management System (escape_room_db)
+-- Scope: Reactive Triggers for team_size & Auto-Payment, plus Views
+-- =====================================================================
+
+USE escape_room_db;
+
+-- 1. DATABASE VIEWS FOR ABSTRACTION & ACCESS CONTROL
+-- View 1: Legacy team membership query abstraction
+CREATE OR REPLACE VIEW team_members AS
+SELECT 
+    team_id, 
+    player_id, 
+    joined_date 
+FROM players 
+WHERE team_id IS NOT NULL;
+
+-- View 2: Flattened contact directory for physical branches
+CREATE OR REPLACE VIEW branch_phones AS
+SELECT 
+    branch_id, 
+    phone 
+FROM branches;
+
+-- View 3: Contact directory for players
+CREATE OR REPLACE VIEW player_phones AS
+SELECT 
+    player_id, 
+    phone 
+FROM players;
+
+-- 2. DYNAMIC BUSINESS LOGIC TRIGGERS
+-- Trigger 1: Increment/sync team_size when a new player joins a team
+DELIMITER $$
+DROP TRIGGER IF EXISTS trg_player_add_team_size$$
+CREATE TRIGGER trg_player_add_team_size
+AFTER INSERT ON players
+FOR EACH ROW
+BEGIN
+    IF NEW.team_id IS NOT NULL THEN
+        UPDATE teams 
+        SET team_size = (SELECT COUNT(*) FROM players WHERE team_id = NEW.team_id)
+        WHERE team_id = NEW.team_id;
+    END IF;
+END$$
+
+-- Trigger 2: Maintain team_size when a player changes team or leaves
+DROP TRIGGER IF EXISTS trg_player_update_team_size$$
+CREATE TRIGGER trg_player_update_team_size
+AFTER UPDATE ON players
+FOR EACH ROW
+BEGIN
+    IF OLD.team_id IS NOT NULL THEN
+        UPDATE teams 
+        SET team_size = (SELECT COUNT(*) FROM players WHERE team_id = OLD.team_id)
+        WHERE team_id = OLD.team_id;
+    END IF;
+    IF NEW.team_id IS NOT NULL THEN
+        UPDATE teams 
+        SET team_size = (SELECT COUNT(*) FROM players WHERE team_id = NEW.team_id)
+        WHERE team_id = NEW.team_id;
+    END IF;
+END$$
+
+-- Trigger 3: Decrement team_size when a player record is deleted
+DROP TRIGGER IF EXISTS trg_player_delete_team_size$$
+CREATE TRIGGER trg_player_delete_team_size
+AFTER DELETE ON players
+FOR EACH ROW
+BEGIN
+    IF OLD.team_id IS NOT NULL THEN
+        UPDATE teams 
+        SET team_size = (SELECT COUNT(*) FROM players WHERE team_id = OLD.team_id)
+        WHERE team_id = OLD.team_id;
+    END IF;
+END$$
+
+-- Trigger 4: Automatically initialize pending payment transaction on new booking
+DROP TRIGGER IF EXISTS trg_booking_auto_payment$$
+CREATE TRIGGER trg_booking_auto_payment
+AFTER INSERT ON bookings
+FOR EACH ROW
+BEGIN
+    DECLARE room_price DECIMAL(10,2);
+    SELECT base_price INTO room_price FROM rooms WHERE room_id = NEW.room_id;
+    IF room_price IS NULL THEN
+        SET room_price = 100.00;
+    END IF;
+    
+    INSERT INTO payments (session_id, amount, payment_mode, payment_status)
+    VALUES (NEW.session_id, room_price, 'UPI', 'Pending')
+    ON DUPLICATE KEY UPDATE amount = room_price;
+END$$
+DELIMITER ;
