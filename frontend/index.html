@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escape Room &amp; Puzzle Hunt Management System | DBMS Project</title>
+  <meta name="description" content="DBMS Lab Project - Modular MySQL JDBC Architecture split into 4 parts: Venues & Rooms, Teams & Players, Bookings & Operations, and Billing & Analytics.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗝️</text></svg>">
+</head>
+<body>
+
+  <!-- Top Application Header -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="brand-icon">🗝️</div>
+      <div>
+        <h1 class="brand-title">EnigmaVault : Escape Room Operations</h1>
+        <div class="brand-subtitle">Next-Gen DBMS Platform &bull; Real-Time Operations Suite</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+      <div class="header-status-badge">
+        <span class="pulse-dot"></span>
+        <span>MySQL 8.0 &bull; escape_room_db</span>
+      </div>
+      <button class="btn btn-outline-cyan btn-sm" onclick="App.openModal('modal-lab-inspector')">
+        🎓 Team &amp; Lab Rubric
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="App.prepareBookingModal()">
+        + Book Mission
+      </button>
+    </div>
+  </header>
+
+  <!-- Quick Stats KPI Ribbon -->
+  <section class="stats-ribbon">
+    <div class="stat-pill">
+      <div class="stat-icon-wrap stat-icon-cyan">🏰</div>
+      <div class="stat-info">
+        <div class="stat-val" id="stat-active-rooms">—</div>
+        <div class="stat-lbl">Active Escape Chambers</div>
+      </div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-icon-wrap stat-icon-purple">🛡️</div>
+      <div class="stat-info">
+        <div class="stat-val" id="stat-total-teams">—</div>
+        <div class="stat-lbl">Registered Squads</div>
+      </div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-icon-wrap stat-icon-emerald">💰</div>
+      <div class="stat-info">
+        <div class="stat-val" id="stat-total-revenue">—</div>
+        <div class="stat-lbl">Realized Revenue</div>
+      </div>
+    </div>
+    <div class="stat-pill">
+      <div class="stat-icon-wrap stat-icon-amber">⚡</div>
+      <div class="stat-info">
+        <div class="stat-val" id="stat-escape-rate">—</div>
+        <div class="stat-lbl">Escape Success Rate</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Natural Application Navigation -->
+  <nav class="module-nav-container">
+    <div class="module-tabs">
+      <button class="tab-btn active" data-nav-view="overview" id="nav-btn-overview">
+        <span>📊 Operations Dashboard</span>
+        <span class="tab-badge">Live Hub</span>
+      </button>
+      <button class="tab-btn" data-nav-view="chambers" id="nav-btn-chambers">
+        <span>🏰 Escape Chambers</span>
+        <span class="tab-badge">Venues &bull; Clues</span>
+      </button>
+      <button class="tab-btn" data-nav-view="teams" id="nav-btn-teams">
+        <span>👥 Teams &amp; Players</span>
+        <span class="tab-badge">Roster &bull; Trigger Size</span>
+      </button>
+      <button class="tab-btn" data-nav-view="operations" id="nav-btn-operations">
+        <span>🎮 Live Game Ops</span>
+        <span class="tab-badge">Control Console</span>
+      </button>
+      <button class="tab-btn" data-nav-view="leaderboard" id="nav-btn-leaderboard">
+        <span>🏆 Hall of Fame</span>
+        <span class="tab-badge">Escape Rank</span>
+      </button>
+      <button class="tab-btn" data-nav-view="finance" id="nav-btn-finance">
+        <span>💳 Finance &amp; Directory</span>
+        <span class="tab-badge">Ledger &bull; Views</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Application Views Area -->
+  <main class="main-wrapper">
+
+    <!-- ================================================================= -->
+    <!-- VIEW: Operations Dashboard (Natural Live Hub)                     -->
+    <!-- ================================================================= -->
+    <section id="section-overview" class="module-section active">
+      <div class="overview-hero">
+        <div class="overview-hero-title">🗝️ Operations Mission Control</div>
+        <div class="overview-hero-desc">
+          Centralized management platform powering multi-venue escape chambers, real-time Game Master operations, dynamic team roster synchronization, and instant billing settlement.
+        </div>
+        <div class="overview-actions">
+          <button class="btn btn-primary" onclick="App.prepareBookingModal()">+ Schedule New Mission</button>
+          <button class="btn btn-cyan" onclick="App.openModal('modal-add-team')">+ Register Team</button>
+          <button class="btn btn-secondary" onclick="App.prepareRoomModal()">+ Add Chamber</button>
+          <button class="btn btn-secondary" onclick="App.switchView('leaderboard')">🏆 View Hall of Fame</button>
+          <button class="btn btn-outline-cyan" onclick="App.openModal('modal-lab-inspector')">🎓 Lab Rubric &amp; Team Map</button>
+        </div>
+      </div>
+
+      <!-- Live Active Missions Spotlight -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div>
+          <h3 style="font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:0.5rem;">
+            <span>⚡ Active &amp; Upcoming Game Sessions</span>
+            <span class="status-pill status-inprogress" id="overview-live-count">Live</span>
+          </h3>
+          <p style="font-size:0.85rem; color:var(--text-muted);">
+            Real-time session monitor. Launch directly into the Game Master console to operate live countdown timer and hint logs.
+          </p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="App.loadOverview()">↻ Refresh Sessions</button>
+      </div>
+
+      <div class="mission-spotlight-grid" id="overview-missions-container">
+        <!-- Rendered dynamically by App.loadOverview() -->
+        <div class="custom-card" style="text-align:center; padding:2rem;">
+          <span class="pulse-dot"></span> Loading live mission spotlight...
+        </div>
+      </div>
+
+      <!-- Quick Distribution Analytics Row -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-top:2rem;">
+        <div class="custom-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h4 style="font-size:1rem; font-weight:700;">🏰 Chamber Difficulty Distribution</h4>
+            <button class="btn btn-secondary btn-sm" onclick="App.switchView('chambers')">View All</button>
+          </div>
+          <div id="overview-difficulty-stats" class="card-meta-list">
+            <span style="color:var(--text-dim);">Loading distribution...</span>
+          </div>
+        </div>
+
+        <div class="custom-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h4 style="font-size:1rem; font-weight:700;">🏢 Realized Revenue by Branch</h4>
+            <button class="btn btn-secondary btn-sm" onclick="App.switchView('finance')">Ledger</button>
+          </div>
+          <div id="overview-branch-stats" class="card-meta-list">
+            <span style="color:var(--text-dim);">Loading revenue...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- VIEW: Escape Chambers & Venues (Part 1 Domain)                    -->
+    <!-- ================================================================= -->
+    <section id="section-chambers" class="module-section">
+      <div class="section-hero">
+        <div>
+          <h2>🏰 Escape Chambers, Venues &amp; Clues</h2>
+          <p>Explore themed challenge rooms, branch facilities, Game Master staff rosters, and self-referencing puzzle clue prerequisite chains.</p>
+        </div>
+        <div class="btn-group-hero">
+          <button class="btn btn-primary" onclick="App.prepareRoomModal()">+ Add Chamber</button>
+          <button class="btn btn-secondary" onclick="App.openModal('modal-add-branch')">+ Add Branch</button>
+          <button class="btn btn-secondary" onclick="App.prepareStaffModal()">+ Add Staff</button>
+          <button class="btn btn-cyan" onclick="App.prepareClueModal()">+ Add Clue</button>
+        </div>
+      </div>
+
+      <!-- Sub-tabs for Chambers -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" data-subtab-part1="rooms">Escape Rooms (Theme &amp; Difficulty)</button>
+        <button class="sub-tab-btn" data-subtab-part1="branches">Physical Branches (Venues)</button>
+        <button class="sub-tab-btn" data-subtab-part1="staff">Staff Members &amp; Game Masters</button>
+        <button class="sub-tab-btn" data-subtab-part1="clues">Puzzle Clues &amp; Prerequisites</button>
+      </div>
+
+      <!-- Dynamic Part 1 Container -->
+      <div id="part1-content-area"></div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- VIEW: Teams & Players Roster (Part 2 Domain)                      -->
+    <!-- ================================================================= -->
+    <section id="section-teams" class="module-section">
+      <div class="section-hero">
+        <div>
+          <h2>👥 Teams &amp; Players Roster</h2>
+          <p>Manage customer registration, squad assembly, player transfers, and observe live <code>team_size</code> auto-maintenance via SQL Triggers.</p>
+        </div>
+        <div class="btn-group-hero">
+          <button class="btn btn-primary" onclick="App.openModal('modal-add-team')">+ Register Team</button>
+          <button class="btn btn-cyan" onclick="App.preparePlayerModal()">+ Register Player</button>
+        </div>
+      </div>
+
+      <!-- Sub-tabs for Teams -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" data-subtab-part2="teams">Teams (Trigger Auto-Size)</button>
+        <button class="sub-tab-btn" data-subtab-part2="players">Registered Players Directory</button>
+        <button class="sub-tab-btn" data-subtab-part2="rosters">SQL View: <code>team_members</code></button>
+      </div>
+
+      <!-- Dynamic Part 2 Container -->
+      <div id="part2-content-area"></div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- VIEW: Live Game Operations & Bookings (Part 3 Domain)             -->
+    <!-- ================================================================= -->
+    <section id="section-operations" class="module-section">
+      <div class="section-hero">
+        <div>
+          <h2>🎮 Live Game Operations &amp; Bookings</h2>
+          <p>Schedule room bookings, host sessions, dispatch real-time hints via the Game Master Console, and record escape outcomes.</p>
+        </div>
+        <div class="btn-group-hero">
+          <button class="btn btn-primary" onclick="App.prepareBookingModal()">+ Book New Mission</button>
+          <button class="btn btn-secondary" onclick="Part3Bookings.loadBookings()">↻ Refresh Schedule</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Session ID</th>
+              <th>Room Theme</th>
+              <th>Team</th>
+              <th>Host Master</th>
+              <th>Scheduled Start</th>
+              <th>Status</th>
+              <th>Outcome</th>
+              <th>Hints Used</th>
+              <th>Operations Console</th>
+            </tr>
+          </thead>
+          <tbody id="bookings-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- VIEW: Hall of Fame & Escape Leaderboard (Leaderboard Focus)       -->
+    <!-- ================================================================= -->
+    <section id="section-leaderboard" class="module-section">
+      <div class="section-hero">
+        <div>
+          <h2>🏆 Hall of Fame: Escape Leaderboard</h2>
+          <p>Elite teams ranked by fastest record completion time, room theme conquered, hint penalties, and game master host.</p>
+        </div>
+        <div class="btn-group-hero">
+          <button class="btn btn-secondary" onclick="App.renderLeaderboardView()">↻ Refresh Leaderboard</button>
+        </div>
+      </div>
+
+      <div id="leaderboard-content-area"></div>
+    </section>
+
+    <!-- ================================================================= -->
+    <!-- VIEW: Finance, Billing & System Directory (Part 4 Domain)         -->
+    <!-- ================================================================= -->
+    <section id="section-finance" class="module-section">
+      <div class="section-hero">
+        <div>
+          <h2>💳 Financial Ledger &amp; System Directory</h2>
+          <p>Process 1:1 booking payments, view multi-branch revenue aggregations, inspect financial KPIs, and query telephone directory views.</p>
+        </div>
+        <div class="btn-group-hero">
+          <button class="btn btn-secondary" onclick="Part4Analytics.loadAll()">↻ Refresh Analytics</button>
+        </div>
+      </div>
+
+      <!-- Sub-tabs for Finance -->
+      <div class="sub-tabs">
+        <button class="sub-tab-btn active" data-subtab-part4="payments">Payments Ledger (1:1 with Bookings)</button>
+        <button class="sub-tab-btn" data-subtab-part4="analytics">Financial Analytics &amp; KPIs</button>
+        <button class="sub-tab-btn" data-subtab-part4="leaderboard">🏆 Mini Leaderboard</button>
+        <button class="sub-tab-btn" data-subtab-part4="phoneviews">SQL Views: <code>branch_phones</code> &amp; <code>player_phones</code></button>
+      </div>
+
+      <!-- Dynamic Part 4 Container -->
+      <div id="part4-content-area"></div>
+    </section>
+
+  </main>
+
+  <!-- ================================================================= -->
+  <!-- MODALS (Forms for CRUD Operations)                                -->
+  <!-- ================================================================= -->
+
+  <!-- Modal: Add Branch -->
+  <div class="modal-overlay" id="modal-add-branch">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📍 Create New Branch Location</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-branch">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Branch Name</label>
+            <input type="text" id="b-name" class="form-control" placeholder="e.g. Uptown Mystery Bunker" required>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>City</label>
+              <input type="text" id="b-city" class="form-control" placeholder="City" required>
+            </div>
+            <div class="form-group">
+              <label>State</label>
+              <input type="text" id="b-state" class="form-control" placeholder="e.g. NY, CA" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Street Address</label>
+            <input type="text" id="b-street" class="form-control" placeholder="123 Riddle Lane" required>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>ZIP Code</label>
+              <input type="text" id="b-zip" class="form-control" placeholder="10001" required>
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="text" id="b-phone" class="form-control" placeholder="+1-555-0199" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Branch</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Room -->
+  <div class="modal-overlay" id="modal-add-room">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🏰 Create New Escape Room Chamber</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-room">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Physical Branch</label>
+            <select id="r-branch-id" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Theme Name</label>
+            <input type="text" id="r-theme" class="form-control" placeholder="e.g. The Pharaoh's Cursed Crypt" required>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Difficulty</label>
+              <select id="r-diff" class="form-control">
+                <option value="Easy">Easy</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="Hard">Hard</option>
+                <option value="Expert">Expert</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Capacity (Max Players)</label>
+              <input type="number" id="r-cap" class="form-control" value="6" min="1" max="20" required>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Base Price ($)</label>
+              <input type="number" step="0.01" id="r-price" class="form-control" value="120.00" required>
+            </div>
+            <div class="form-group">
+              <label>Duration (Mins)</label>
+              <input type="number" id="r-dur" class="form-control" value="60" required>
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="r-status" class="form-control">
+                <option value="Available" selected>Available</option>
+                <option value="Occupied">Occupied</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Staff -->
+  <div class="modal-overlay" id="modal-add-staff">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>👤 Register Staff / Game Master</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-staff">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Branch Assignment</label>
+            <select id="s-branch-id" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="s-name" class="form-control" placeholder="Staff Name" required>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Role</label>
+              <input type="text" id="s-role" class="form-control" placeholder="Game Master / Lead" required>
+            </div>
+            <div class="form-group">
+              <label>Pay Schedule</label>
+              <select id="s-paytime" class="form-control">
+                <option value="Monthly">Monthly</option>
+                <option value="Hourly">Hourly</option>
+                <option value="Weekly">Weekly</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>In Time (Shift Start)</label>
+              <input type="time" id="s-intime" class="form-control" value="09:00" required>
+            </div>
+            <div class="form-group">
+              <label>Out Time (Shift End)</label>
+              <input type="time" id="s-outtime" class="form-control" value="17:00" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Staff</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add Clue -->
+  <div class="modal-overlay" id="modal-add-clue">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>💡 Add Room Puzzle / Clue</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-clue">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Escape Room</label>
+            <select id="c-room-id" class="form-control" required></select>
+          </div>
+          <div class="form-group">
+            <label>Puzzle Objective / Description</label>
+            <input type="text" id="c-desc" class="form-control" placeholder="e.g. Align the zodiac solar dials" required>
+          </div>
+          <div class="form-group">
+            <label>Hint Text</label>
+            <textarea id="c-hint" class="form-control" rows="2" placeholder="e.g. Look beneath the bronze statue on the mantelpiece" required></textarea>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Prerequisite Clue (Self-Ref FK)</label>
+              <select id="c-prereq" class="form-control"></select>
+            </div>
+            <div class="form-group">
+              <label>Points Awarded</label>
+              <input type="number" id="c-points" class="form-control" value="20" min="0" required>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-cyan">Add Clue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Register Team -->
+  <div class="modal-overlay" id="modal-add-team">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🛡️ Register New Escape Team</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-team">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Team Name</label>
+            <input type="text" id="t-name" class="form-control" placeholder="e.g. Cipher Breakers" required>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-dim); margin-top:0.5rem;">
+            ℹ️ Note: <code>team_size</code> begins at 0 and is updated automatically by database triggers when players are registered or assigned.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Register Team</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Register Player -->
+  <div class="modal-overlay" id="modal-add-player">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>👤 Register Customer / Player</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-player">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="p-name" class="form-control" placeholder="Alice Smith" required>
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" id="p-email" class="form-control" placeholder="alice@example.com" required>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="text" id="p-phone" class="form-control" placeholder="+1-555-1020" required>
+            </div>
+            <div class="form-group">
+              <label>Age</label>
+              <input type="number" id="p-age" class="form-control" placeholder="25" min="5" max="120">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Initial Team Assignment (Optional)</label>
+            <select id="p-team-id" class="form-control"></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-cyan">Register Player</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Assign Player to Team -->
+  <div class="modal-overlay" id="modal-assign-player">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="assign-modal-team-title">Assign Player</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-assign-player">
+        <input type="hidden" id="assign-team-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Select Player to Join This Team</label>
+            <select id="assign-player-select" class="form-control" required></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-cyan">Confirm Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Book New Mission -->
+  <div class="modal-overlay" id="modal-add-booking">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>🎮 Schedule New Escape Mission</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <form id="form-add-booking">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Session ID Code</label>
+            <input type="text" id="bk-session-id" class="form-control" readonly style="font-family:var(--font-mono); color:var(--accent-cyan);">
+          </div>
+          <div class="form-group">
+            <label>Escape Room Chamber</label>
+            <select id="bk-room-id" class="form-control" required></select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Participating Team</label>
+              <select id="bk-team-id" class="form-control" required></select>
+            </div>
+            <div class="form-group">
+              <label>Host Game Master</label>
+              <select id="bk-staff-id" class="form-control" required></select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Start Time</label>
+              <input type="datetime-local" id="bk-start-time" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>Slot End Time</label>
+              <input type="datetime-local" id="bk-end-time" class="form-control" required>
+            </div>
+          </div>
+          <p style="font-size:0.75rem; color:var(--text-dim); margin-top:0.5rem;">
+            ⚡ Trigger <code>trg_booking_auto_payment</code> will automatically initialize the corresponding pending payment transaction.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-modal-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Confirm Booking</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Game Master Live Control Room -->
+  <div class="modal-overlay" id="modal-control-room">
+    <div class="modal-box" style="max-width: 780px;">
+      <div class="modal-header" style="background:rgba(0, 240, 255, 0.04);">
+        <div>
+          <h3>🎮 Game Master Live Control Room</h3>
+          <span style="font-size:0.8rem; color:var(--accent-cyan); font-family:var(--font-mono);" id="cr-session-id">SESS-0000</span>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Live Mission Status Ribbon -->
+        <div class="control-room-header">
+          <div>
+            <div style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted);">Active Mission:</div>
+            <div style="font-size:1.25rem; font-weight:800; color:var(--text-main);" id="cr-room-theme">Theme Name</div>
+            <div style="font-size:0.85rem; color:var(--text-dim); margin-top:0.2rem;">
+              Team: <strong id="cr-team-name" style="color:var(--accent-purple);">Team</strong> &bull; 
+              Host: <span id="cr-staff-name">Staff</span> &bull; 
+              Status: <span id="cr-session-status" class="status-pill status-inprogress">Scheduled</span> &bull;
+              Outcome: <span id="cr-outcome" style="color:var(--accent-cyan); font-weight:700;">Pending</span>
+            </div>
+          </div>
+
+          <!-- Live Stopwatch Timer -->
+          <div class="live-timer-display">
+            <div class="timer-box" id="cr-timer-text">60:00</div>
+          </div>
+        </div>
+
+        <!-- Timer Controls -->
+        <div style="display:flex; justify-content:center; gap:0.75rem; margin-bottom:1.5rem;">
+          <button class="btn btn-emerald btn-sm" id="timer-start-btn">▶ Start / Resume Mission</button>
+          <button class="btn btn-secondary btn-sm" id="timer-pause-btn">⏸ Pause Timer</button>
+          <button class="btn btn-secondary btn-sm" id="timer-reset-btn">↺ Reset (60m)</button>
+        </div>
+
+        <!-- Clue / Hint Dispatcher -->
+        <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;">
+          <span>💡 In-Room Puzzles &amp; Hint Dispatcher</span>
+          <span style="font-size:0.75rem; color:var(--text-dim); font-weight:normal;">(Logs to <code>hint_usage</code>)</span>
+        </h4>
+        <div id="cr-clues-container" style="max-height:220px; overflow-y:auto; margin-bottom:1.5rem;"></div>
+
+        <!-- Mission Completion Controls -->
+        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem;">
+          <div style="font-size:0.85rem; font-weight:700; margin-bottom:0.5rem;">🏁 Finalize Game Outcome &amp; Time:</div>
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button class="btn btn-emerald" onclick="Part3Bookings.finalizeSession('Escaped')">
+              🏆 ESCAPED! (Record Victory)
+            </button>
+            <button class="btn btn-danger" onclick="Part3Bookings.finalizeSession('Failed')">
+              ✕ FAILED (Gave Up)
+            </button>
+            <button class="btn btn-secondary" onclick="Part3Bookings.finalizeSession('Timeout')">
+              ⏱ TIMEOUT (Time Expired)
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-modal-close>Close Console</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Lab Rubric & Collaborative Team Inspector -->
+  <div class="modal-overlay" id="modal-lab-inspector">
+    <div class="modal-box" style="max-width: 960px;">
+      <div class="modal-header" style="background: rgba(0, 240, 255, 0.05);">
+        <div>
+          <h3>🎓 Academic Lab Rubric &amp; Team Contribution Architecture</h3>
+          <div style="font-size:0.8rem; color:var(--accent-cyan); font-family:var(--font-mono); margin-top:0.2rem;">
+            4-Student Workload Distribution &bull; MySQL 8.0 &bull; Java JDBC &bull; Web System
+          </div>
+        </div>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        
+        <p style="font-size:0.9rem; color:var(--text-muted); line-height:1.5;">
+          This DBMS Lab Project was engineered by a 4-person team. The database design began with foundational physical and transactional schemas (Members 1 &amp; 2), extended with reactive automation triggers (Member 3), and optimized with indexing, stored procedures, and analytics (Member 4).
+        </p>
+
+        <div class="inspector-grid">
+          
+          <!-- Member 1 Card -->
+          <div class="member-card">
+            <div>
+              <div class="member-card-header">
+                <div>
+                  <div class="member-role">Team Member 1</div>
+                  <div class="member-name">Physical Venues &amp; Clues</div>
+                </div>
+                <span class="card-badge badge-easy">Part 1 Lead</span>
+              </div>
+              <ul class="deliverable-list">
+                <li><span>🏛️</span> <strong>SQL DDL:</strong> <code>branches</code>, <code>staff</code>, <code>rooms</code>, <code>clues</code></li>
+                <li><span>🔗</span> <strong>FK Hierarchy:</strong> Self-referencing prerequisite clue chain (<code>prereq_clue_id</code>)</li>
+                <li><span>☕</span> <strong>Java Backend:</strong> <code>VenueRoomDAO.java</code>, <code>VenueRoomController.java</code>, Models</li>
+                <li><span>💻</span> <strong>Web Views:</strong> Chambers Catalog, Branches Directory, Clue Tree</li>
+              </ul>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="App.jumpToStudentView('chambers')">
+              👉 Inspect Chambers &amp; Venues
+            </button>
+          </div>
+
+          <!-- Member 2 Card -->
+          <div class="member-card">
+            <div>
+              <div class="member-card-header">
+                <div>
+                  <div class="member-role">Team Member 2</div>
+                  <div class="member-name">Teams &amp; Player Roster</div>
+                </div>
+                <span class="card-badge badge-medium">Part 2 Lead</span>
+              </div>
+              <ul class="deliverable-list">
+                <li><span>🛡️</span> <strong>SQL DDL:</strong> <code>teams</code>, <code>players</code>, <code>bookings</code>, <code>hint_usage</code>, <code>payments</code></li>
+                <li><span>🌱</span> <strong>Seed Data:</strong> Comprehensive sample dataset (<code>02_seed.sql</code>)</li>
+                <li><span>☕</span> <strong>Java Backend:</strong> <code>TeamPlayerDAO.java</code>, <code>TeamPlayerController.java</code>, Models</li>
+                <li><span>💻</span> <strong>Web Views:</strong> Squad Assembly, Player Management, Roster</li>
+              </ul>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="App.jumpToStudentView('teams')">
+              👉 Inspect Teams &amp; Rosters
+            </button>
+          </div>
+
+          <!-- Member 3 Card -->
+          <div class="member-card">
+            <div>
+              <div class="member-card-header">
+                <div>
+                  <div class="member-role">Team Member 3</div>
+                  <div class="member-name">Triggers &amp; Game Ops</div>
+                </div>
+                <span class="card-badge badge-hard">Part 3 Lead</span>
+              </div>
+              <ul class="deliverable-list">
+                <li><span>⚡</span> <strong>SQL Triggers:</strong> 3 Dynamic <code>team_size</code> sync triggers + <code>trg_booking_auto_payment</code></li>
+                <li><span>👁️</span> <strong>SQL Views:</strong> <code>team_members</code>, <code>branch_phones</code>, <code>player_phones</code></li>
+                <li><span>☕</span> <strong>Java Backend:</strong> <code>BookingDAO.java</code>, <code>BookingController.java</code>, Models</li>
+                <li><span>💻</span> <strong>Web Views:</strong> Game Master Live Console, Stopwatch Countdown, Hint Dispatcher</li>
+              </ul>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="App.jumpToStudentView('operations')">
+              👉 Inspect Live Game Operations
+            </button>
+          </div>
+
+          <!-- Member 4 Card -->
+          <div class="member-card">
+            <div>
+              <div class="member-card-header">
+                <div>
+                  <div class="member-role">Team Member 4</div>
+                  <div class="member-name">Analytics &amp; Optimization</div>
+                </div>
+                <span class="card-badge badge-expert">Part 4 Lead</span>
+              </div>
+              <ul class="deliverable-list">
+                <li><span>⚙️</span> <strong>Stored Procedure:</strong> <code>sp_complete_game_session</code> (Atomic mission finalizer)</li>
+                <li><span>🚀</span> <strong>Indexing &amp; Joins:</strong> B-Tree Indexes (<code>idx_bookings_timeslot</code> etc.) &amp; Analytics joins</li>
+                <li><span>☕</span> <strong>Java Backend:</strong> <code>PaymentAnalyticsDAO.java</code>, Controller + Swing Desktop GUI</li>
+                <li><span>💻</span> <strong>Web Views:</strong> Hall of Fame Leaderboard, Payments Ledger, Financial Analytics</li>
+              </ul>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="App.jumpToStudentView('finance')">
+              👉 Inspect Finance &amp; Analytics
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-modal-close>Close Inspector</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Persistent Floating Lab Rubric Pill Button -->
+  <div class="floating-lab-pill" onclick="App.openModal('modal-lab-inspector')">
+    <span class="pulse-dot"></span>
+    <span>🎓 Lab Rubric &amp; Team Map</span>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/part1_venues.js"></script>
+  <script src="js/part2_teams.js"></script>
+  <script src="js/part3_bookings.js"></script>
+  <script src="js/part4_analytics.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
