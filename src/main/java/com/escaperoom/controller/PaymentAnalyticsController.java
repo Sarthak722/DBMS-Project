@@ -45,8 +45,7 @@ public class PaymentAnalyticsController implements HttpHandler {
                 HttpHelper.sendError(exchange, 404, "Endpoint not found: " + path);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            HttpHelper.sendError(exchange, 500, "Database Error: " + e.getMessage());
+            HttpHelper.handleException(exchange, e);
         }
     }
 

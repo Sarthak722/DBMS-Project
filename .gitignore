@@ -3,3 +3,11 @@ bin/
 *.class
 .DS_Store
 *.log
+
+# Project documentation & reports
+*.docx
+ER_DIAGRAM_REPORT.md
+
+# Raster ER diagram renders
+ER.png
+ER.jpeg

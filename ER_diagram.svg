@@ -1,0 +1,418 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2800 2050" width="2800" height="2050">
+<defs>
+  <style><![CDATA[
+
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    
+    .bg { fill: #ffffff; }
+    
+    /* Entity Styles (Black and White) */
+    .entity-rect { fill: #f8fafc; stroke: #000000; stroke-width: 3.2; rx: 6; }
+    .entity-text { fill: #000000; font-size: 21px; font-weight: 800; letter-spacing: 2px; text-anchor: middle; dominant-baseline: middle; }
+    
+    /* Relationship Styles */
+    .rel-diamond { fill: #f1f5f9; stroke: #000000; stroke-width: 2.6; }
+    .rel-text { fill: #000000; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; font-style: italic; letter-spacing: 0.5px; }
+    
+    /* Attribute Styles */
+    .attr-ellipse { fill: #ffffff; stroke: #1e293b; stroke-width: 1.8; }
+    .attr-pk { fill: #ffffff; stroke: #000000; stroke-width: 3; }
+    .attr-derived { fill: #ffffff; stroke: #000000; stroke-width: 2.2; stroke-dasharray: 6,4; }
+    .attr-composite { fill: #f8fafc; stroke: #1e293b; stroke-width: 2; }
+    .attr-rel { fill: #f8fafc; stroke: #000000; stroke-width: 2.2; }
+    
+    .attr-text { fill: #0f172a; font-size: 14px; font-weight: 500; text-anchor: middle; dominant-baseline: middle; }
+    .attr-text-pk { fill: #000000; font-size: 14px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; text-decoration: underline; }
+    .attr-text-derived { fill: #0f172a; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    .attr-text-rel { fill: #000000; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+    
+    /* Connecting Lines */
+    .conn-rel { stroke: #000000; stroke-width: 2.5; }
+    .conn-attr { stroke: #334155; stroke-width: 1.6; }
+    .conn-pk { stroke: #000000; stroke-width: 2.2; }
+    .conn-comp { stroke: #475569; stroke-width: 1.6; stroke-dasharray: 4,4; }
+    .conn-derived { stroke: #000000; stroke-width: 1.6; stroke-dasharray: 4,4; }
+    
+    /* Cardinality Badges */
+    .card-badge-bg { fill: #ffffff; stroke: #000000; stroke-width: 2; rx: 4; }
+    .card-text { fill: #000000; font-size: 13.5px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+    
+    /* Title and Legend */
+    .title-main { fill: #000000; font-size: 34px; font-weight: 800; letter-spacing: 1.2px; }
+    .title-sub { fill: #475569; font-size: 16px; font-weight: 500; }
+    .legend-box { fill: #ffffff; stroke: #000000; stroke-width: 2; rx: 8; }
+    .legend-title { fill: #000000; font-size: 16px; font-weight: 800; letter-spacing: 0.8px; }
+    .legend-text { fill: #1e293b; font-size: 13.5px; font-weight: 500; dominant-baseline: middle; }
+
+  ]]></style>
+</defs>
+
+<rect width="100%" height="100%" class="bg" />
+
+
+<g transform="translate(100, 72)">
+  <text x="200" y="20" class="title-main">ESCAPE ROOM &amp; PUZZLE HUNT MANAGEMENT SYSTEM</text>
+</g>
+
+<line x1="400" y1="380" x2="400" y2="700" class="conn-rel" />
+<line x1="400" y1="700" x2="400" y2="1020" class="conn-rel" />
+
+    <polygon points="400,662 468,700 400,738 332,700" class="rel-diamond" />
+    <text x="400" y="700" class="rel-text">employs</text>
+    
+
+    <rect x="414" y="457" width="32" height="26" class="card-badge-bg" />
+    <text x="430" y="470" class="card-text">1</text>
+    
+
+    <rect x="414" y="917" width="32" height="26" class="card-badge-bg" />
+    <text x="430" y="930" class="card-text">N</text>
+    
+<line x1="400" y1="380" x2="875" y2="380" class="conn-rel" />
+<line x1="875" y1="380" x2="1350" y2="380" class="conn-rel" />
+
+    <polygon points="875,346 930,380 875,414 820,380" class="rel-diamond" />
+    <text x="875" y="380" class="rel-text">has</text>
+    
+
+    <rect x="534" y="342" width="32" height="26" class="card-badge-bg" />
+    <text x="550" y="355" class="card-text">1</text>
+    
+
+    <rect x="1194" y="337" width="32" height="26" class="card-badge-bg" />
+    <text x="1210" y="350" class="card-text">N</text>
+    
+<line x1="1350" y1="380" x2="1825" y2="380" class="conn-rel" />
+<line x1="1825" y1="380" x2="2300" y2="380" class="conn-rel" />
+
+    <polygon points="1825,344 1893,380 1825,416 1757,380" class="rel-diamond" />
+    <text x="1825" y="380" class="rel-text">has_clue</text>
+    
+
+    <rect x="1474" y="337" width="32" height="26" class="card-badge-bg" />
+    <text x="1490" y="350" class="card-text">1</text>
+    
+
+    <rect x="2144" y="342" width="32" height="26" class="card-badge-bg" />
+    <text x="2160" y="355" class="card-text">N</text>
+    
+<line x1="400" y1="1020" x2="875" y2="1020" class="conn-rel" />
+<line x1="875" y1="1020" x2="1350" y2="1020" class="conn-rel" />
+
+    <polygon points="875,982 953,1020 875,1058 797,1020" class="rel-diamond" />
+    <text x="875" y="1020" class="rel-text">supervises</text>
+    
+
+    <rect x="524" y="982" width="32" height="26" class="card-badge-bg" />
+    <text x="540" y="995" class="card-text">1</text>
+    
+
+    <rect x="1184" y="1032" width="32" height="26" class="card-badge-bg" />
+    <text x="1200" y="1045" class="card-text">N</text>
+    
+<line x1="1350" y1="380" x2="1350" y2="700" class="conn-rel" />
+<line x1="1350" y1="700" x2="1350" y2="1020" class="conn-rel" />
+
+    <polygon points="1350,665 1408,700 1350,735 1292,700" class="rel-diamond" />
+    <text x="1350" y="700" class="rel-text">hosts</text>
+    
+
+    <rect x="1369" y="457" width="32" height="26" class="card-badge-bg" />
+    <text x="1385" y="470" class="card-text">1</text>
+    
+
+    <rect x="1369" y="917" width="32" height="26" class="card-badge-bg" />
+    <text x="1385" y="930" class="card-text">N</text>
+    
+<line x1="1350" y1="1020" x2="1825" y2="1020" class="conn-rel" />
+<line x1="1825" y1="1020" x2="2300" y2="1020" class="conn-rel" />
+
+    <polygon points="1825,982 1897,1020 1825,1058 1753,1020" class="rel-diamond" />
+    <text x="1825" y="1020" class="rel-text">requests</text>
+    
+
+    <rect x="1479" y="982" width="32" height="26" class="card-badge-bg" />
+    <text x="1495" y="995" class="card-text">1</text>
+    
+
+    <rect x="2134" y="982" width="32" height="26" class="card-badge-bg" />
+    <text x="2150" y="995" class="card-text">N</text>
+    
+<line x1="2300" y1="380" x2="2300" y2="700" class="conn-rel" />
+<line x1="2300" y1="700" x2="2300" y2="1020" class="conn-rel" />
+
+    <polygon points="2300,664 2365,700 2300,736 2235,700" class="rel-diamond" />
+    <text x="2300" y="700" class="rel-text">hint_for</text>
+    
+
+    <rect x="2314" y="457" width="32" height="26" class="card-badge-bg" />
+    <text x="2330" y="470" class="card-text">1</text>
+    
+
+    <rect x="2314" y="917" width="32" height="26" class="card-badge-bg" />
+    <text x="2330" y="930" class="card-text">N</text>
+    
+<line x1="1350" y1="1580" x2="1350" y2="1300" class="conn-rel" />
+<line x1="1350" y1="1300" x2="1350" y2="1020" class="conn-rel" />
+
+    <polygon points="1350,1265 1410,1300 1350,1335 1290,1300" class="rel-diamond" />
+    <text x="1350" y="1300" class="rel-text">makes</text>
+    
+
+    <rect x="1369" y="1477" width="32" height="26" class="card-badge-bg" />
+    <text x="1385" y="1490" class="card-text">1</text>
+    
+
+    <rect x="1369" y="1097" width="32" height="26" class="card-badge-bg" />
+    <text x="1385" y="1110" class="card-text">N</text>
+    
+<line x1="1350" y1="1020" x2="1825" y2="1300" class="conn-rel" />
+<line x1="1825" y1="1300" x2="2300" y2="1580" class="conn-rel" />
+
+    <polygon points="1825,1260 1913,1300 1825,1340 1737,1300" class="rel-diamond" />
+    <text x="1825" y="1300" class="rel-text">has_payment</text>
+    
+
+    <rect x="1474" y="1127" width="32" height="26" class="card-badge-bg" />
+    <text x="1490" y="1140" class="card-text">1</text>
+    
+
+    <rect x="2144" y="1477" width="32" height="26" class="card-badge-bg" />
+    <text x="2160" y="1490" class="card-text">1</text>
+    
+<line x1="400" y1="1580" x2="875" y2="1580" class="conn-rel" />
+<line x1="875" y1="1580" x2="1350" y2="1580" class="conn-rel" />
+
+    <polygon points="875,1542 950,1580 875,1618 800,1580" class="rel-diamond" />
+    <text x="875" y="1580" class="rel-text">member_of</text>
+    
+
+    <rect x="524" y="1542" width="32" height="26" class="card-badge-bg" />
+    <text x="540" y="1555" class="card-text">N</text>
+    
+
+    <rect x="1184" y="1542" width="32" height="26" class="card-badge-bg" />
+    <text x="1200" y="1555" class="card-text">1</text>
+    
+<path d="M 2255 346 C 2160 245, 2190 200, 2235 200" class="conn-rel" fill="none" />
+<path d="M 2365 200 C 2410 200, 2440 245, 2345 346" class="conn-rel" fill="none" />
+
+    <polygon points="2300,166 2365,200 2300,234 2235,200" class="rel-diamond" />
+    <text x="2300" y="200" class="rel-text">prereq_of</text>
+    
+
+    <rect x="2194" y="277" width="32" height="26" class="card-badge-bg" />
+    <text x="2210" y="290" class="card-text">1</text>
+    
+
+    <rect x="2374" y="277" width="32" height="26" class="card-badge-bg" />
+    <text x="2390" y="290" class="card-text">N</text>
+    
+<line x1="875" y1="1618" x2="875" y2="1700" class="conn-attr" />
+<ellipse cx="875" cy="1700" rx="62" ry="24" class="attr-rel" />
+<text x="875" y="1700" class="attr-text-rel">joined_date</text>
+<line x1="400" y1="380" x2="230" y2="260" class="conn-pk" />
+<ellipse cx="230" cy="260" rx="58" ry="24" class="attr-pk" />
+<text x="230" y="260" class="attr-text-pk">branch_id</text>
+<line x1="400" y1="380" x2="360" y2="230" class="conn-attr" />
+<ellipse cx="360" cy="230" rx="48" ry="22" class="attr-ellipse" />
+<text x="360" y="230" class="attr-text">name</text>
+<line x1="400" y1="380" x2="490" y2="230" class="conn-attr" />
+<ellipse cx="490" cy="230" rx="48" ry="22" class="attr-ellipse" />
+<text x="490" y="230" class="attr-text">phone</text>
+<line x1="300" y1="380" x2="232" y2="380" class="conn-comp" />
+<ellipse cx="180" cy="380" rx="52" ry="22" class="attr-composite" />
+<text x="180" y="380" class="attr-text">address</text>
+<line x1="128" y1="380" x2="115" y2="315" class="conn-comp" />
+<ellipse cx="70" cy="315" rx="45" ry="20" class="attr-ellipse" />
+<text x="70" y="315" class="attr-text">street</text>
+<line x1="128" y1="380" x2="102" y2="370" class="conn-comp" />
+<ellipse cx="60" cy="370" rx="42" ry="20" class="attr-ellipse" />
+<text x="60" y="370" class="attr-text">city</text>
+<line x1="128" y1="380" x2="102" y2="425" class="conn-comp" />
+<ellipse cx="60" cy="425" rx="42" ry="20" class="attr-ellipse" />
+<text x="60" y="425" class="attr-text">state</text>
+<line x1="128" y1="380" x2="120" y2="475" class="conn-comp" />
+<ellipse cx="80" cy="475" rx="40" ry="20" class="attr-ellipse" />
+<text x="80" y="475" class="attr-text">zip</text>
+<line x1="400" y1="1020" x2="180" y2="920" class="conn-pk" />
+<ellipse cx="180" cy="920" rx="56" ry="24" class="attr-pk" />
+<text x="180" y="920" class="attr-text-pk">staff_id</text>
+<line x1="400" y1="1020" x2="160" y2="985" class="conn-attr" />
+<ellipse cx="160" cy="985" rx="48" ry="22" class="attr-ellipse" />
+<text x="160" y="985" class="attr-text">name</text>
+<line x1="400" y1="1020" x2="160" y2="1055" class="conn-attr" />
+<ellipse cx="160" cy="1055" rx="48" ry="22" class="attr-ellipse" />
+<text x="160" y="1055" class="attr-text">role</text>
+<line x1="400" y1="1020" x2="190" y2="1125" class="conn-attr" />
+<ellipse cx="190" cy="1125" rx="54" ry="22" class="attr-ellipse" />
+<text x="190" y="1125" class="attr-text">pay_time</text>
+<line x1="400" y1="1020" x2="290" y2="1175" class="conn-attr" />
+<ellipse cx="290" cy="1175" rx="48" ry="22" class="attr-ellipse" />
+<text x="290" y="1175" class="attr-text">in_time</text>
+<line x1="400" y1="1020" x2="420" y2="1175" class="conn-attr" />
+<ellipse cx="420" cy="1175" rx="48" ry="22" class="attr-ellipse" />
+<text x="420" y="1175" class="attr-text">out_time</text>
+<line x1="1350" y1="380" x2="1170" y2="260" class="conn-pk" />
+<ellipse cx="1170" cy="260" rx="56" ry="24" class="attr-pk" />
+<text x="1170" y="260" class="attr-text-pk">room_id</text>
+<line x1="1350" y1="380" x2="1280" y2="215" class="conn-attr" />
+<ellipse cx="1280" cy="215" rx="62" ry="23" class="attr-ellipse" />
+<text x="1280" y="215" class="attr-text">theme_name</text>
+<line x1="1350" y1="380" x2="1410" y2="210" class="conn-attr" />
+<ellipse cx="1410" cy="210" rx="55" ry="22" class="attr-ellipse" />
+<text x="1410" y="210" class="attr-text">difficulty</text>
+<line x1="1350" y1="380" x2="1530" y2="235" class="conn-attr" />
+<ellipse cx="1530" cy="235" rx="50" ry="22" class="attr-ellipse" />
+<text x="1530" y="235" class="attr-text">capacity</text>
+<line x1="1350" y1="380" x2="1585" y2="300" class="conn-attr" />
+<ellipse cx="1585" cy="300" rx="55" ry="22" class="attr-ellipse" />
+<text x="1585" y="300" class="attr-text">base_price</text>
+<line x1="1350" y1="380" x2="1585" y2="420" class="conn-attr" />
+<ellipse cx="1585" cy="420" rx="50" ry="22" class="attr-ellipse" />
+<text x="1585" y="420" class="attr-text">duration</text>
+<line x1="1350" y1="380" x2="1150" y2="335" class="conn-attr" />
+<ellipse cx="1150" cy="335" rx="46" ry="22" class="attr-ellipse" />
+<text x="1150" y="335" class="attr-text">status</text>
+<line x1="2300" y1="380" x2="2510" y2="300" class="conn-pk" />
+<ellipse cx="2510" cy="300" rx="54" ry="24" class="attr-pk" />
+<text x="2510" y="300" class="attr-text-pk">clue_id</text>
+<line x1="2300" y1="380" x2="2535" y2="365" class="conn-attr" />
+<ellipse cx="2535" cy="365" rx="46" ry="22" class="attr-ellipse" />
+<text x="2535" y="365" class="attr-text">points</text>
+<line x1="2300" y1="380" x2="2535" y2="435" class="conn-attr" />
+<ellipse cx="2535" cy="435" rx="46" ry="22" class="attr-ellipse" />
+<text x="2535" y="435" class="attr-text">hint</text>
+<line x1="2300" y1="380" x2="2505" y2="500" class="conn-attr" />
+<ellipse cx="2505" cy="500" rx="62" ry="23" class="attr-ellipse" />
+<text x="2505" y="500" class="attr-text">description</text>
+<line x1="1350" y1="1020" x2="1180" y2="845" class="conn-pk" />
+<ellipse cx="1180" cy="845" rx="60" ry="24" class="attr-pk" />
+<text x="1180" y="845" class="attr-text-pk">booking_id</text>
+<line x1="1350" y1="1020" x2="1115" y2="935" class="conn-pk" />
+<ellipse cx="1115" cy="935" rx="60" ry="24" class="attr-pk" />
+<text x="1115" y="935" class="attr-text-pk">session_id</text>
+<line x1="1350" y1="1020" x2="1115" y2="1110" class="conn-attr" />
+<ellipse cx="1115" cy="1110" rx="58" ry="22" class="attr-ellipse" />
+<text x="1115" y="1110" class="attr-text">start_time</text>
+<line x1="1350" y1="1020" x2="1180" y2="1195" class="conn-attr" />
+<ellipse cx="1180" cy="1195" rx="65" ry="23" class="attr-ellipse" />
+<text x="1180" y="1195" class="attr-text">slot_end_time</text>
+<line x1="1350" y1="1020" x2="1520" y2="845" class="conn-attr" />
+<ellipse cx="1520" cy="845" rx="68" ry="23" class="attr-ellipse" />
+<text x="1520" y="845" class="attr-text">complete_time</text>
+<line x1="1350" y1="1020" x2="1585" y2="935" class="conn-attr" />
+<ellipse cx="1585" cy="935" rx="48" ry="22" class="attr-ellipse" />
+<text x="1585" y="935" class="attr-text">status</text>
+<line x1="1350" y1="1020" x2="1585" y2="1110" class="conn-attr" />
+<ellipse cx="1585" cy="1110" rx="52" ry="22" class="attr-ellipse" />
+<text x="1585" y="1110" class="attr-text">outcome</text>
+<line x1="1350" y1="1020" x2="1520" y2="1195" class="conn-attr" />
+<ellipse cx="1520" cy="1195" rx="50" ry="22" class="attr-ellipse" />
+<text x="1520" y="1195" class="attr-text">forum_id</text>
+<line x1="2300" y1="1020" x2="2520" y2="955" class="conn-pk" />
+<ellipse cx="2520" cy="955" rx="70" ry="24" class="attr-pk" />
+<text x="2520" y="955" class="attr-text-pk">hint_usage_id</text>
+<line x1="2300" y1="1020" x2="2535" y2="1025" class="conn-attr" />
+<ellipse cx="2535" cy="1025" rx="50" ry="22" class="attr-ellipse" />
+<text x="2535" y="1025" class="attr-text">hint_no</text>
+<line x1="2300" y1="1020" x2="2515" y2="1095" class="conn-attr" />
+<ellipse cx="2515" cy="1095" rx="74" ry="23" class="attr-ellipse" />
+<text x="2515" y="1095" class="attr-text">requested_time</text>
+<line x1="2300" y1="1580" x2="2130" y2="1685" class="conn-pk" />
+<ellipse cx="2130" cy="1685" rx="60" ry="24" class="attr-pk" />
+<text x="2130" y="1685" class="attr-text-pk">payment_id</text>
+<line x1="2300" y1="1580" x2="2250" y2="1710" class="conn-attr" />
+<ellipse cx="2250" cy="1710" rx="50" ry="22" class="attr-ellipse" />
+<text x="2250" y="1710" class="attr-text">amount</text>
+<line x1="2300" y1="1580" x2="2375" y2="1710" class="conn-attr" />
+<ellipse cx="2375" cy="1710" rx="68" ry="23" class="attr-ellipse" />
+<text x="2375" y="1710" class="attr-text">payment_mode</text>
+<line x1="2300" y1="1580" x2="2500" y2="1675" class="conn-attr" />
+<ellipse cx="2500" cy="1675" rx="70" ry="23" class="attr-ellipse" />
+<text x="2500" y="1675" class="attr-text">payment_status</text>
+<line x1="2300" y1="1580" x2="2525" y2="1605" class="conn-attr" />
+<ellipse cx="2525" cy="1605" rx="55" ry="22" class="attr-ellipse" />
+<text x="2525" y="1605" class="attr-text">timestamp</text>
+<line x1="1350" y1="1580" x2="1230" y2="1695" class="conn-pk" />
+<ellipse cx="1230" cy="1695" rx="54" ry="24" class="attr-pk" />
+<text x="1230" y="1695" class="attr-text-pk">team_id</text>
+<line x1="1350" y1="1580" x2="1350" y2="1705" class="conn-attr" />
+<ellipse cx="1350" cy="1705" rx="60" ry="23" class="attr-ellipse" />
+<text x="1350" y="1705" class="attr-text">team_name</text>
+<line x1="1350" y1="1580" x2="1485" y2="1695" class="conn-derived" />
+<ellipse cx="1485" cy="1695" rx="56" ry="23" class="attr-derived" />
+<text x="1485" y="1695" class="attr-text-derived">team_size</text>
+<line x1="400" y1="1580" x2="200" y2="1495" class="conn-pk" />
+<ellipse cx="200" cy="1495" rx="56" ry="24" class="attr-pk" />
+<text x="200" y="1495" class="attr-text-pk">player_id</text>
+<line x1="400" y1="1580" x2="165" y2="1560" class="conn-attr" />
+<ellipse cx="165" cy="1560" rx="48" ry="22" class="attr-ellipse" />
+<text x="165" y="1560" class="attr-text">name</text>
+<line x1="400" y1="1580" x2="165" y2="1630" class="conn-attr" />
+<ellipse cx="165" cy="1630" rx="48" ry="22" class="attr-ellipse" />
+<text x="165" y="1630" class="attr-text">email</text>
+<line x1="400" y1="1580" x2="210" y2="1695" class="conn-attr" />
+<ellipse cx="210" cy="1695" rx="48" ry="22" class="attr-ellipse" />
+<text x="210" y="1695" class="attr-text">phone</text>
+<line x1="400" y1="1580" x2="330" y2="1710" class="conn-attr" />
+<ellipse cx="330" cy="1710" rx="42" ry="22" class="attr-ellipse" />
+<text x="330" y="1710" class="attr-text">age</text>
+
+    <g>
+      <rect x="300" y="346" width="200" height="68" class="entity-rect" />
+      <text x="400" y="380" class="entity-text">BRANCH</text>
+    </g>
+    
+
+    <g>
+      <rect x="305" y="986" width="190" height="68" class="entity-rect" />
+      <text x="400" y="1020" class="entity-text">STAFF</text>
+    </g>
+    
+
+    <g>
+      <rect x="1250" y="346" width="200" height="68" class="entity-rect" />
+      <text x="1350" y="380" class="entity-text">ROOM</text>
+    </g>
+    
+
+    <g>
+      <rect x="2205" y="346" width="190" height="68" class="entity-rect" />
+      <text x="2300" y="380" class="entity-text">CLUE</text>
+    </g>
+    
+
+    <g>
+      <rect x="1240" y="984" width="220" height="72" class="entity-rect" />
+      <text x="1350" y="1020" class="entity-text">BOOKING</text>
+    </g>
+    
+
+    <g>
+      <rect x="2195" y="986" width="210" height="68" class="entity-rect" />
+      <text x="2300" y="1020" class="entity-text">HINT_USAGE</text>
+    </g>
+    
+
+    <g>
+      <rect x="2200" y="1546" width="200" height="68" class="entity-rect" />
+      <text x="2300" y="1580" class="entity-text">PAYMENT</text>
+    </g>
+    
+
+    <g>
+      <rect x="1255" y="1546" width="190" height="68" class="entity-rect" />
+      <text x="1350" y="1580" class="entity-text">TEAM</text>
+    </g>
+    
+
+    <g>
+      <rect x="305" y="1546" width="190" height="68" class="entity-rect" />
+      <text x="400" y="1580" class="entity-text">PLAYER</text>
+    </g>
+    
+
+</svg>

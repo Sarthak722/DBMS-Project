@@ -1,12 +1,16 @@
 /**
- * Part 4: Billing, Payments & Analytics Module
- * Manages Financial Transactions, Revenue Summaries,
- * Escape Rate Leaderboards, and View Queries.
+ * Billing & Analytics Module
+ * Clean, plain, working CRUD tables for:
+ * - Payments Ledger
+ * - Financial Analytics Summary
+ * - SQL Views: branch_phones & player_phones
  */
 
 const Part4Analytics = {
   currentSubTab: 'payments',
+  cachedPayments: [],
   cachedAnalytics: null,
+  cachedViews: null,
 
   async init() {
     this.bindEvents();
@@ -26,9 +30,10 @@ const Part4Analytics = {
 
   async loadAll() {
     try {
+      this.cachedPayments = await api.part4.getPayments();
       this.renderCurrentSubTab();
     } catch (err) {
-      App.toast('Failed to load analytics: ' + err.message, 'error');
+      console.warn('Billing load error:', err);
     }
   },
 
@@ -40,302 +45,294 @@ const Part4Analytics = {
       this.renderPayments(container);
     } else if (this.currentSubTab === 'analytics') {
       this.renderAnalytics(container);
-    } else if (this.currentSubTab === 'leaderboard') {
-      this.renderLeaderboard(container);
     } else if (this.currentSubTab === 'phoneviews') {
       this.renderPhoneViews(container);
     }
   },
 
-  // ----------------------------------------------------
-  // Render Payments Table
-  // ----------------------------------------------------
+  // =========================================================================
+  // 1. PAYMENTS LEDGER TABLE
+  // =========================================================================
   async renderPayments(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Payments...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Payments...</div></div>';
     try {
       const payments = await api.part4.getPayments();
+      this.cachedPayments = payments || [];
+      App.updateToolbarCount(this.cachedPayments.length);
+
       if (!payments || payments.length === 0) {
-        container.innerHTML = '<div class="custom-card" style="text-align:center;">No payment transactions recorded yet.</div>';
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No payment transactions recorded yet. Click (+) to record a payment.</div>`;
         return;
       }
 
       let html = `
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Tx ID</th>
-                <th>Session ID</th>
-                <th>Team</th>
-                <th>Room Theme</th>
-                <th>Amount</th>
-                <th>Payment Mode</th>
-                <th>Status</th>
-                <th>Timestamp</th>
-                <th>Quick Action</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-payments">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Tx ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Session ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Squad <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Room Theme <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Amount Paid <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Payment Mode <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Status <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Timestamp <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
+
       payments.forEach(p => {
         const isPaid = p.paymentStatus === 'Completed';
-        const statusBadge = isPaid ? 'badge-available' : 'badge-maintenance';
 
         html += `
-          <tr>
-            <td><code>#${p.paymentId}</code></td>
-            <td><strong style="color:var(--accent-cyan); font-family:var(--font-mono);">${p.sessionId}</strong></td>
+          <tr data-searchable="${p.paymentId} ${p.sessionId} ${p.teamName} ${p.roomTheme} ${p.paymentMode} ${p.paymentStatus}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">TX-${String(p.paymentId).padStart(4, '0')}</strong></td>
+            <td><strong style="color:var(--text-dark); font-family:var(--font-mono);">${p.sessionId}</strong></td>
             <td>🛡️ ${p.teamName}</td>
             <td>${p.roomTheme}</td>
-            <td><strong style="color:var(--accent-emerald); font-size:1rem; font-family:var(--font-mono);">$${p.amount.toFixed(2)}</strong></td>
-            <td><span class="card-badge badge-medium">${p.paymentMode}</span></td>
-            <td><span class="card-badge ${statusBadge}">${p.paymentStatus}</span></td>
-            <td><small style="color:var(--text-dim);">${p.timestamp || 'Recent'}</small></td>
-            <td>
-              ${!isPaid ? `
-                <button class="btn btn-emerald btn-sm" onclick="Part4Analytics.markPaid(${p.paymentId}, '${p.paymentMode}')">
-                  ✓ Mark Paid
+            <td><strong>$${parseFloat(p.amount).toFixed(2)}</strong></td>
+            <td>${p.paymentMode}</td>
+            <td><span class="badge badge-gray">${p.paymentStatus}</span></td>
+            <td><small style="color:var(--text-muted); font-family:var(--font-mono);">${p.timestamp ? p.timestamp.substring(0, 16) : 'Recent'}</small></td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-pay-${p.paymentId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-pay-${p.paymentId}">
+                ${!isPaid ? `
+                  <button class="kebab-item" onclick="Part4Analytics.markPaid(${p.paymentId}, '${p.paymentMode}')">
+                    ✓ Mark Paid
+                  </button>
+                ` : ''}
+                <button class="kebab-item" onclick="Part4Analytics.promptChangeStatus(${p.paymentId}, '${p.paymentStatus}', '${p.paymentMode}')">
+                  ✏️ Edit Status
                 </button>
-              ` : `
-                <button class="btn btn-secondary btn-sm" onclick="Part4Analytics.promptChangeStatus(${p.paymentId}, '${p.paymentStatus}', '${p.paymentMode}')">
-                  Edit
-                </button>
-              `}
+              </div>
             </td>
           </tr>
         `;
       });
-      html += '</tbody></table></div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
-  async markPaid(paymentId, currentMode) {
+  async markPaid(paymentId, paymentMode) {
+    App.closeAllKebabMenus();
     try {
-      await api.part4.updatePaymentStatus(paymentId, 'Completed', currentMode || 'UPI');
-      App.toast('Payment marked as Completed', 'success');
+      await api.part4.updatePaymentStatus(paymentId, 'Completed', paymentMode);
+      App.toast(`Payment #${paymentId} marked as Completed`, 'success');
       this.renderPayments(document.getElementById('part4-content-area'));
       App.refreshStats();
     } catch (err) {
-      App.toast('Error updating payment: ' + err.message, 'error');
+      App.toast('Update error: ' + err.message, 'error');
     }
   },
 
-  async promptChangeStatus(paymentId, curStatus, curMode) {
-    const newStatus = prompt('Enter payment status (Completed, Pending, Refunded):', curStatus);
-    if (!newStatus) return;
-    const newMode = prompt('Enter payment mode (Cash, UPI, Credit Card, Debit Card, Net Banking):', curMode);
-    if (!newMode) return;
+  async promptChangeStatus(paymentId, currentStatus, currentMode) {
+    App.closeAllKebabMenus();
+    const newStatus = prompt(`Change status for Payment #${paymentId} (Completed / Pending / Refunded):`, currentStatus);
+    if (!newStatus || newStatus === currentStatus) return;
+
+    const newMode = prompt(`Payment mode (Card / UPI / Cash / NetBanking):`, currentMode) || currentMode;
 
     try {
       await api.part4.updatePaymentStatus(paymentId, newStatus, newMode);
-      App.toast('Payment record updated', 'success');
+      App.toast(`Payment updated to ${newStatus}`, 'success');
       this.renderPayments(document.getElementById('part4-content-area'));
       App.refreshStats();
     } catch (err) {
-      App.toast('Error updating payment: ' + err.message, 'error');
+      App.toast('Update failed: ' + err.message, 'error');
     }
   },
 
-  // ----------------------------------------------------
-  // Render Analytics & Financial Reports
-  // ----------------------------------------------------
+  // =========================================================================
+  // 2. FINANCIAL ANALYTICS
+  // =========================================================================
   async renderAnalytics(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Calculating Financial Metrics & Aggregations...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Calculating Analytics...</div></div>';
     try {
-      const data = await api.part4.getAnalytics();
-      this.cachedAnalytics = data;
+      const summary = await api.part4.getAnalytics();
+      this.cachedAnalytics = summary;
+      App.updateToolbarCount(undefined);
 
       let html = `
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
-          <div class="custom-card">
-            <span class="meta-label">Total Realized Revenue</span>
-            <div style="font-size:2rem; font-weight:800; color:var(--accent-emerald); font-family:var(--font-mono); margin:0.5rem 0;">
-              $${data.totalRevenue.toFixed(2)}
-            </div>
-            <span style="font-size:0.75rem; color:var(--text-muted);">From settled payments</span>
-          </div>
-
-          <div class="custom-card">
-            <span class="meta-label">Escape Rate %</span>
-            <div style="font-size:2rem; font-weight:800; color:var(--accent-cyan); font-family:var(--font-mono); margin:0.5rem 0;">
-              ${data.escapeRate}%
-            </div>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Teams successfully escaped</span>
-          </div>
-
-          <div class="custom-card">
-            <span class="meta-label">Total Game Sessions</span>
-            <div style="font-size:2rem; font-weight:800; color:var(--accent-purple); font-family:var(--font-mono); margin:0.5rem 0;">
-              ${data.totalBookings}
-            </div>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Recorded bookings</span>
-          </div>
-
-          <div class="custom-card">
-            <span class="meta-label">Registered Players</span>
-            <div style="font-size:2rem; font-weight:800; color:var(--accent-amber); font-family:var(--font-mono); margin:0.5rem 0;">
-              ${data.totalPlayers}
-            </div>
-            <span style="font-size:0.75rem; color:var(--text-muted);">Across ${data.totalTeams} active teams</span>
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-bottom:2rem;">
-          <div class="custom-card">
-            <h4 style="font-size:1.05rem; font-weight:700; margin-bottom:1rem;">💳 Revenue by Payment Mode</h4>
-            <div class="card-meta-list">
-              ${data.revenueByMode && data.revenueByMode.length > 0 ?
-                data.revenueByMode.map(m => `
-                  <div class="meta-item">
-                    <span class="meta-label">${m.mode} (${m.count} tx)</span>
-                    <span class="meta-value" style="color:var(--accent-emerald);">$${m.amount.toFixed(2)}</span>
-                  </div>
-                `).join('') : '<span style="color:var(--text-dim);">No transactions yet.</span>'}
+        <div class="stats-cards-grid" style="margin-bottom:1.5rem;">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green">💰</div>
+            <div>
+              <div class="stat-title">Realized Revenue</div>
+              <div class="stat-number">$${parseFloat(summary.totalRevenue || 0).toFixed(2)}</div>
             </div>
           </div>
-
-          <div class="custom-card">
-            <h4 style="font-size:1.05rem; font-weight:700; margin-bottom:1rem;">🏢 Revenue by Physical Branch</h4>
-            <div class="card-meta-list">
-              ${data.revenueByBranch && data.revenueByBranch.length > 0 ?
-                data.revenueByBranch.map(b => `
-                  <div class="meta-item">
-                    <span class="meta-label">${b.branchName} (${b.transactions} tx)</span>
-                    <span class="meta-value" style="color:var(--accent-cyan);">$${b.revenue.toFixed(2)}</span>
-                  </div>
-                `).join('') : '<span style="color:var(--text-dim);">No branch revenue data yet.</span>'}
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-amber">⏳</div>
+            <div>
+              <div class="stat-title">Pending Revenue</div>
+              <div class="stat-number">$${parseFloat(summary.pendingRevenue || 0).toFixed(2)}</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue">📊</div>
+            <div>
+              <div class="stat-title">Avg Duration</div>
+              <div class="stat-number">${parseFloat(summary.avgCompletionTime || 0).toFixed(1)}m</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-purple">🎯</div>
+            <div>
+              <div class="stat-title">Success Rate</div>
+              <div class="stat-number">${parseFloat(summary.escapeSuccessRate || 0).toFixed(1)}%</div>
             </div>
           </div>
         </div>
+
+        <div class="card-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">🏢 Branch Revenue Breakdown</h3>
+          </div>
+          <div class="panel-body" style="padding:0;">
+            <table class="crud-table">
+              <thead>
+                <tr>
+                  <th>Branch / Venue</th>
+                  <th>Concluded Missions</th>
+                  <th>Realized Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
-      container.innerHTML = html;
-    } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
-    }
-  },
 
-  // ----------------------------------------------------
-  // Render Leaderboard
-  // ----------------------------------------------------
-  async renderLeaderboard(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Querying Hall of Fame Escape Leaderboard...</div>';
-    try {
-      const leaderboard = await api.part4.getLeaderboard();
-      if (!leaderboard || leaderboard.length === 0) {
-        container.innerHTML = '<div class="custom-card" style="text-align:center;">No teams have escaped yet! Complete an in-progress game to set a record.</div>';
-        return;
+      if (summary.branchRevenue && summary.branchRevenue.length > 0) {
+        summary.branchRevenue.forEach(b => {
+          html += `
+            <tr>
+              <td><strong>📍 ${b.branchName}</strong></td>
+              <td>${b.sessionCount} sessions</td>
+              <td><strong>$${parseFloat(b.totalRevenue).toFixed(2)}</strong></td>
+            </tr>
+          `;
+        });
+      } else {
+        html += `<tr><td colspan="3" class="text-center" style="padding:1.5rem; color:var(--text-muted);">No revenue recorded.</td></tr>`;
       }
 
-      let html = `
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Team Name</th>
-                <th>Room Conquered</th>
-                <th>Session ID</th>
-                <th>Escape Time</th>
-                <th>Hints Used</th>
-                <th>Host Master</th>
-              </tr>
-            </thead>
-            <tbody>
+      html += `
+              </tbody>
+            </table>
+          </div>
+        </div>
       `;
-      leaderboard.forEach(item => {
-        const rankClass = item.rank <= 3 ? `rank-${item.rank}` : 'rank-other';
-        const rankIcon = item.rank === 1 ? '🥇' : item.rank === 2 ? '🥈' : item.rank === 3 ? '🥉' : `#${item.rank}`;
 
-        html += `
-          <tr>
-            <td><span class="rank-badge ${rankClass}">${rankIcon}</span></td>
-            <td><strong style="color:var(--text-main); font-size:0.95rem;">${item.teamName}</strong></td>
-            <td>${item.themeName}</td>
-            <td><code>${item.sessionId}</code></td>
-            <td><strong style="color:var(--accent-cyan); font-family:var(--font-mono); font-size:1rem;">⚡ ${item.completeTime}</strong></td>
-            <td><span class="card-badge badge-medium">${item.hintsUsed} Hints</span></td>
-            <td>👤 ${item.hostStaff}</td>
-          </tr>
-        `;
-      });
-      html += '</tbody></table></div>';
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
-  // ----------------------------------------------------
-  // Render Phone Views (branch_phones & player_phones)
-  // ----------------------------------------------------
+  // =========================================================================
+  // 3. SQL VIEWS: branch_phones & player_phones
+  // =========================================================================
   async renderPhoneViews(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Querying Views `branch_phones` & `player_phones`...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Querying Views...</div></div>';
     try {
-      const res = await api.part4.getPhoneViews();
-      const bp = res.branchPhones || [];
-      const pp = res.playerPhones || [];
+      const views = await api.part4.getPhoneViews();
+      this.cachedViews = views;
+      App.updateToolbarCount(undefined);
 
       let html = `
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:1.5rem;">
-          <div>
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-cyan); font-family:var(--font-mono); font-size:0.9rem;">
-              ⚡ SQL View: <code>branch_phones</code>
-            </h4>
-            <div class="table-container">
-              <table class="data-table">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap:1.5rem;">
+          
+          <div class="table-card">
+            <div class="panel-header">
+              <h3 class="panel-title">📞 Branch Phones View</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="crud-table">
                 <thead>
                   <tr>
                     <th>Branch ID</th>
                     <th>Branch Name</th>
+                    <th>City</th>
                     <th>Phone</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${bp.map(b => `
-                    <tr>
-                      <td><code>#${b.branchId}</code></td>
-                      <td><strong>${b.name}</strong></td>
-                      <td><a href="tel:${b.phone}" style="color:var(--accent-emerald); text-decoration:none;">${b.phone}</a></td>
-                    </tr>
-                  `).join('')}
+      `;
+
+      if (views.branchPhones && views.branchPhones.length > 0) {
+        views.branchPhones.forEach(bp => {
+          html += `
+            <tr data-searchable="${bp.branchId} ${bp.name} ${bp.city} ${bp.phone}">
+              <td><code>#${bp.branchId}</code></td>
+              <td><strong>${bp.name}</strong></td>
+              <td>${bp.city}</td>
+              <td><a href="tel:${bp.phone}" style="color:var(--text-dark); text-decoration:none;">${bp.phone}</a></td>
+            </tr>
+          `;
+        });
+      } else {
+        html += `<tr><td colspan="4" class="text-center" style="padding:1.5rem;">No records.</td></tr>`;
+      }
+
+      html += `
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div>
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-purple); font-family:var(--font-mono); font-size:0.9rem;">
-              ⚡ SQL View: <code>player_phones</code>
-            </h4>
-            <div class="table-container">
-              <table class="data-table">
+          <div class="table-card">
+            <div class="panel-header">
+              <h3 class="panel-title">📱 Player Phones View</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="crud-table">
                 <thead>
                   <tr>
                     <th>Player ID</th>
                     <th>Player Name</th>
                     <th>Phone</th>
+                    <th>Team</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${pp.map(p => `
-                    <tr>
-                      <td><code>#${p.playerId}</code></td>
-                      <td><strong>${p.name}</strong></td>
-                      <td><a href="tel:${p.phone}" style="color:var(--accent-emerald); text-decoration:none;">${p.phone}</a></td>
-                    </tr>
-                  `).join('')}
+      `;
+
+      if (views.playerPhones && views.playerPhones.length > 0) {
+        views.playerPhones.forEach(pp => {
+          html += `
+            <tr data-searchable="${pp.playerId} ${pp.name} ${pp.phone} ${pp.teamName || ''}">
+              <td><code>#${pp.playerId}</code></td>
+              <td><strong>${pp.name}</strong></td>
+              <td><a href="tel:${pp.phone}" style="color:var(--text-dark); text-decoration:none;">${pp.phone}</a></td>
+              <td>${pp.teamName || 'Unassigned'}</td>
+            </tr>
+          `;
+        });
+      } else {
+        html += `<tr><td colspan="4" class="text-center" style="padding:1.5rem;">No records.</td></tr>`;
+      }
+
+      html += `
                 </tbody>
               </table>
             </div>
           </div>
+
         </div>
       `;
+
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   }
 };

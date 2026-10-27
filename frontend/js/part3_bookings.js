@@ -1,7 +1,8 @@
 /**
- * Part 3: Bookings & Live Game Operations Module
- * Manages Booking Schedules, Session Hosting, Live Stopwatch Timer,
- * Real-time Hint Usage Logger, and Game Outcome Recorder (Escaped/Failed/Timeout).
+ * Bookings & Operations Module
+ * Clean, plain, working CRUD tables for:
+ * - Bookings Schedule
+ * - Live Game Master Console with Stopwatch Countdown & Hints
  */
 
 const Part3Bookings = {
@@ -9,6 +10,7 @@ const Part3Bookings = {
   timerInterval: null,
   timerSecondsRemaining: 3600,
   timerRunning: false,
+  cachedBookings: [],
 
   async init() {
     this.bindEvents();
@@ -16,7 +18,6 @@ const Part3Bookings = {
   },
 
   bindEvents() {
-    // Timer controls in Control Room Modal
     const startBtn = document.getElementById('timer-start-btn');
     const pauseBtn = document.getElementById('timer-pause-btn');
     const resetBtn = document.getElementById('timer-reset-btn');
@@ -30,33 +31,42 @@ const Part3Bookings = {
     const container = document.getElementById('bookings-table-body');
     if (!container) return;
 
-    container.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Bookings...</td></tr>';
+    container.innerHTML = '<tr><td colspan="10" class="text-center" style="padding:2rem;"><span class="pulse-dot"></span> Loading Bookings...</td></tr>';
     try {
       const bookings = await api.part3.getBookings();
+      this.cachedBookings = bookings || [];
+      App.updateToolbarCount(this.cachedBookings.length);
+
       if (!bookings || bookings.length === 0) {
-        container.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:2rem;">No bookings found. Click "Book New Mission" to schedule one.</td></tr>';
+        container.innerHTML = '<tr><td colspan="10" class="text-center" style="padding:2.5rem; color:var(--text-muted);">No bookings scheduled. Click (+) to schedule a mission.</td></tr>';
         return;
       }
 
       let html = '';
       bookings.forEach(b => {
-        const statusClass = `status-${b.status.toLowerCase().replace(/[^a-z]/g, '')}`;
-        const outcomeClass = `outcome-${b.outcome.toLowerCase()}`;
-
         html += `
-          <tr>
-            <td><strong style="color:var(--accent-cyan); font-family:var(--font-mono);">${b.sessionId}</strong></td>
+          <tr data-searchable="${b.sessionId} ${b.roomTheme} ${b.teamName} ${b.staffName} ${b.status} ${b.outcome}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">${b.sessionId}</strong></td>
             <td><strong>${b.roomTheme}</strong></td>
             <td>🛡️ ${b.teamName}</td>
             <td>👤 ${b.staffName}</td>
             <td><small style="color:var(--text-muted); font-family:var(--font-mono);">${b.startTime}</small></td>
-            <td><span class="status-pill ${statusClass}">${b.status}</span></td>
-            <td><span class="card-badge ${outcomeClass}">${b.outcome}</span></td>
-            <td><strong style="color:var(--accent-amber); font-family:var(--font-mono);">${b.hintsUsed}</strong></td>
-            <td>
-              <div style="display:flex; gap:0.4rem;">
-                <button class="btn btn-cyan btn-sm" onclick="Part3Bookings.openControlRoom('${b.sessionId}')">🎮 Host Console</button>
-                <button class="btn btn-danger btn-sm" onclick="Part3Bookings.cancelBooking(${b.bookingId})">Cancel</button>
+            <td><span class="badge badge-gray">${b.status}</span></td>
+            <td><span class="badge badge-gray">${b.outcome}</span></td>
+            <td><strong>${b.hintsUsed}</strong></td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-bk-${b.bookingId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-bk-${b.bookingId}">
+                <button class="kebab-item" onclick="Part3Bookings.openControlRoom('${b.sessionId}')">
+                  🎮 Host Console
+                </button>
+                <button class="kebab-item" onclick="Part3Bookings.promptStatusChange('${b.sessionId}', '${b.status}')">
+                  ✏️ Update Status
+                </button>
+                <button class="kebab-item item-danger" onclick="Part3Bookings.cancelBooking(${b.bookingId})">
+                  🗑️ Cancel Session
+                </button>
               </div>
             </td>
           </tr>
@@ -64,26 +74,44 @@ const Part3Bookings = {
       });
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<tr><td colspan="9" style="color:var(--accent-rose); text-align:center;">Error: ${err.message}</td></tr>`;
+      container.innerHTML = `<tr><td colspan="10" class="text-center" style="color:var(--color-red); padding:2rem;">Error: ${err.message}</td></tr>`;
+    }
+  },
+
+  async promptStatusChange(sessionId, currentStatus) {
+    App.closeAllKebabMenus();
+    const newStatus = prompt(`Change status for Session ${sessionId} (Scheduled / In Progress / Completed / Cancelled):`, currentStatus);
+    if (!newStatus || newStatus === currentStatus) return;
+
+    try {
+      await api.part3.updateBookingStatus(sessionId, newStatus);
+      App.toast(`Session status updated to ${newStatus}`, 'success');
+      this.loadBookings();
+      App.refreshStats();
+    } catch (err) {
+      App.toast('Update error: ' + err.message, 'error');
     }
   },
 
   async cancelBooking(bookingId) {
-    if (!confirm('Cancel / delete this booking session?')) return;
+    App.closeAllKebabMenus();
+    if (!confirm(`Cancel Booking #${bookingId}?`)) return;
+
     try {
       await api.part3.deleteBooking(bookingId);
       App.toast('Booking cancelled', 'success');
       this.loadBookings();
       App.refreshStats();
     } catch (err) {
-      App.toast('Error cancelling booking: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
     }
   },
 
-  // ----------------------------------------------------
-  // Live Game Master Control Room
-  // ----------------------------------------------------
+  // =========================================================================
+  // LIVE GAME MASTER CONTROL ROOM
+  // =========================================================================
   async openControlRoom(sessionId) {
+    App.closeAllKebabMenus();
     try {
       const booking = await api.part3.getBookings(sessionId);
       this.activeSession = booking;
@@ -93,110 +121,92 @@ const Part3Bookings = {
       if (document.getElementById('cr-team-name')) document.getElementById('cr-team-name').innerText = booking.teamName;
       if (document.getElementById('cr-staff-name')) document.getElementById('cr-staff-name').innerText = booking.staffName;
       if (document.getElementById('cr-session-status')) document.getElementById('cr-session-status').innerText = booking.status;
-      if (document.getElementById('cr-outcome')) document.getElementById('cr-outcome').innerText = booking.outcome;
 
-      // Reset & set timer based on default room duration or remaining
       this.resetTimer(60 * 60);
-
-      // Load Hints History & Clues for this room
-      await this.loadControlRoomClues(booking.roomId, booking.sessionId);
+      await this.loadCluesForSession(booking.roomId, booking.sessionId);
 
       App.openModal('modal-control-room');
     } catch (err) {
-      App.toast('Failed to launch control room: ' + err.message, 'error');
+      App.toast('Failed to load session details: ' + err.message, 'error');
     }
   },
 
-  async loadControlRoomClues(roomId, sessionId) {
-    const listContainer = document.getElementById('cr-clues-container');
-    if (!listContainer) return;
+  async loadCluesForSession(roomId, sessionId) {
+    const container = document.getElementById('cr-clues-container');
+    if (!container) return;
 
-    listContainer.innerHTML = '<div style="text-align:center; padding:1rem;"><span class="pulse-dot"></span> Loading Room Puzzles & Hints...</div>';
+    container.innerHTML = '<div style="text-align:center; padding:1rem;"><span class="pulse-dot"></span> Loading clues...</div>';
     try {
-      const allClues = await api.part1.getClues();
+      const [allClues, usedHints] = await Promise.all([
+        api.part1.getClues(),
+        api.part3.getHints(sessionId).catch(() => [])
+      ]);
+
       const roomClues = allClues.filter(c => c.roomId === roomId);
-      const usedHints = await api.part3.getHints(sessionId);
+      const usedClueIds = new Set(usedHints.map(h => h.clueId));
 
       if (roomClues.length === 0) {
-        listContainer.innerHTML = '<div style="color:var(--text-dim); font-size:0.85rem;">No clues registered for this room yet.</div>';
+        container.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">No clues configured for this chamber.</div>';
         return;
       }
 
-      let html = '<div class="clue-feed">';
+      let html = '<div style="display:flex; flex-direction:column; gap:0.4rem;">';
       roomClues.forEach(c => {
-        const hintCount = usedHints.filter(h => h.clueId === c.clueId).length;
+        const isDispatched = usedClueIds.has(c.clueId);
+
         html += `
-          <div class="clue-item-row ${hintCount > 0 ? 'unlocked' : ''}">
-            <div style="flex:1;">
-              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
-                <span class="card-badge badge-medium">Clue #${c.clueId}</span>
-                <strong>${c.description}</strong>
-                ${c.prereqClueId ? `<span class="card-badge badge-hard">Req #${c.prereqClueId}</span>` : ''}
-              </div>
-              <div style="font-size:0.85rem; color:var(--accent-amber); font-style:italic;">
-                💡 Hint: "${c.hint}"
-              </div>
-              <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.2rem;">
-                Hints dispatched this session: <strong>${hintCount}</strong>
-              </div>
-            </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid var(--table-border); padding:0.4rem 0.6rem; border-radius:var(--radius-sm); font-size:0.8rem;">
             <div>
-              <button class="btn btn-cyan btn-sm" onclick="Part3Bookings.dispatchHint(${c.clueId}, '${sessionId}')">
-                📢 Dispatch Hint
-              </button>
+              <strong>CL-${c.clueId}: ${c.description}</strong>
+              <div style="color:var(--text-muted); font-size:0.75rem;">Hint: "${c.hint}" &bull; ${c.points} pts</div>
             </div>
+            ${isDispatched 
+              ? '<span class="badge badge-gray">Sent</span>'
+              : `<button class="btn btn-secondary btn-sm" onclick="Part3Bookings.dispatchHint(${c.clueId}, '${sessionId}')">💡 Dispatch</button>`
+            }
           </div>
         `;
       });
       html += '</div>';
-      listContainer.innerHTML = html;
+      container.innerHTML = html;
     } catch (err) {
-      listContainer.innerHTML = `<div style="color:var(--accent-rose);">Error loading clues: ${err.message}</div>`;
+      container.innerHTML = `<div style="color:var(--color-red); font-size:0.8rem;">Error loading clues: ${err.message}</div>`;
     }
   },
 
   async dispatchHint(clueId, sessionId) {
     try {
       await api.part3.logHint(clueId, sessionId);
-      App.toast('Hint dispatched and recorded into `hint_usage` table!', 'success');
+      App.toast('Hint recorded', 'success');
       if (this.activeSession) {
-        this.loadControlRoomClues(this.activeSession.roomId, sessionId);
+        await this.loadCluesForSession(this.activeSession.roomId, sessionId);
       }
+      this.loadBookings();
     } catch (err) {
-      App.toast('Error logging hint: ' + err.message, 'error');
+      App.toast('Failed to dispatch hint: ' + err.message, 'error');
     }
   },
 
-  // Stopwatch / Countdown Timer
   startTimer() {
     if (this.timerRunning) return;
     this.timerRunning = true;
-    if (this.activeSession && this.activeSession.status !== 'In-Progress') {
-      api.part3.updateBookingStatus(this.activeSession.sessionId, 'In-Progress')
-        .then(() => {
-          document.getElementById('cr-session-status').innerText = 'In-Progress';
-          App.toast('Session status switched to In-Progress', 'info');
-        })
-        .catch(console.error);
-    }
-
     this.timerInterval = setInterval(() => {
       if (this.timerSecondsRemaining > 0) {
         this.timerSecondsRemaining--;
         this.updateTimerDisplay();
       } else {
         this.pauseTimer();
-        App.toast('⏰ TIME EXPIRED! Mission has timed out.', 'error');
+        App.toast('Time expired!', 'error');
       }
     }, 1000);
   },
 
   pauseTimer() {
     this.timerRunning = false;
-    clearInterval(this.timerInterval);
+    if (this.timerInterval) clearInterval(this.timerInterval);
   },
 
-  resetTimer(seconds) {
+  resetTimer(seconds = 3600) {
     this.pauseTimer();
     this.timerSecondsRemaining = seconds;
     this.updateTimerDisplay();
@@ -205,28 +215,29 @@ const Part3Bookings = {
   updateTimerDisplay() {
     const mins = Math.floor(this.timerSecondsRemaining / 60);
     const secs = this.timerSecondsRemaining % 60;
-    const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const str = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
     const el = document.getElementById('cr-timer-text');
-    if (el) el.innerText = formatted;
+    if (el) el.innerText = str;
   },
 
-  // Finalize Session Outcome
   async finalizeSession(outcome) {
     if (!this.activeSession) return;
-    const timeUsedSeconds = 3600 - this.timerSecondsRemaining;
-    const mins = Math.floor(timeUsedSeconds / 60);
-    const secs = timeUsedSeconds % 60;
-    const completeTime = `00:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const sessionId = this.activeSession.sessionId;
+    const elapsedSeconds = 3600 - this.timerSecondsRemaining;
+    const completeTimeMinutes = Math.max(1, Math.round(elapsedSeconds / 60));
+
+    if (!confirm(`Finalize Session ${sessionId} as "${outcome}" (${completeTimeMinutes} mins)?`)) return;
 
     try {
-      await api.part3.completeSession(this.activeSession.sessionId, completeTime, outcome);
       this.pauseTimer();
-      App.toast(`Session marked as ${outcome}! Time: ${completeTime}`, 'success');
+      await api.part3.completeSession(sessionId, completeTimeMinutes, outcome);
+      App.toast(`Session finalized as ${outcome}`, 'success');
       App.closeModal('modal-control-room');
       this.loadBookings();
       App.refreshStats();
+      App.loadChampionsLeaderboard();
     } catch (err) {
-      App.toast('Error completing session: ' + err.message, 'error');
+      App.toast('Finalization error: ' + err.message, 'error');
     }
   }
 };

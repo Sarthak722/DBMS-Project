@@ -1,13 +1,16 @@
 /**
- * Part 2: Teams & Players Module
- * Manages Teams, Player Registrations, Roster Assignment,
- * and demonstrates dynamic team_size triggers & SQL views.
+ * Teams & Players Module
+ * Clean, plain, working CRUD tables for:
+ * - Teams (Auto-size via SQL triggers)
+ * - Registered Players Directory
+ * - SQL View: team_members
  */
 
 const Part2Teams = {
   currentSubTab: 'teams',
   cachedTeams: [],
   cachedPlayers: [],
+  cachedRosters: [],
 
   async init() {
     this.bindEvents();
@@ -31,7 +34,7 @@ const Part2Teams = {
       this.cachedPlayers = await api.part2.getPlayers();
       this.renderCurrentSubTab();
     } catch (err) {
-      App.toast('Failed to load team/player data: ' + err.message, 'error');
+      console.warn('Teams load error:', err);
     }
   },
 
@@ -48,216 +51,250 @@ const Part2Teams = {
     }
   },
 
-  // ----------------------------------------------------
-  // Render Teams
-  // ----------------------------------------------------
+  // =========================================================================
+  // 1. REGISTERED TEAMS TABLE
+  // =========================================================================
   async renderTeams(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Teams...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Teams...</div></div>';
     try {
       const teams = await api.part2.getTeams();
-      this.cachedTeams = teams;
+      this.cachedTeams = teams || [];
+      App.updateToolbarCount(this.cachedTeams.length);
 
       if (!teams || teams.length === 0) {
-        container.innerHTML = '<div class="custom-card" style="text-align:center;">No teams registered yet.</div>';
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No teams registered yet. Click (+) to register a team.</div>`;
         return;
       }
 
-      let html = '<div class="card-grid">';
-      teams.forEach(t => {
-        html += `
-          <div class="custom-card">
-            <div>
-              <div class="card-top">
-                <span class="card-badge badge-medium">Team #${t.teamId}</span>
-                <span class="card-badge badge-available" title="Maintained automatically via SQL Trigger">
-                  👥 ${t.teamSize} Members (Trigger)
-                </span>
-              </div>
-              <h3 class="card-title">${t.teamName}</h3>
-              <div class="card-subtitle">Registered: ${t.createdAt ? t.createdAt.substring(0, 10) : 'Active'}</div>
-
-              <div style="margin: 1rem 0;">
-                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-dim); margin-bottom:0.5rem; font-weight:700;">
-                  Active Roster Members:
-                </div>
-                <div style="display:flex; flex-direction:column; gap:0.4rem; max-height:140px; overflow-y:auto;">
-                  ${t.members && t.members.length > 0 ? 
-                    t.members.map(m => `
-                      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:0.35rem 0.6rem; border-radius:var(--radius-sm); font-size:0.8rem;">
-                        <span>👤 <strong>${m.name}</strong></span>
-                        <span style="color:var(--text-dim); font-size:0.75rem;">${m.email}</span>
-                      </div>
-                    `).join('') :
-                    '<span style="color:var(--text-dim); font-size:0.8rem; font-style:italic;">No players assigned yet.</span>'
-                  }
-                </div>
-              </div>
-            </div>
-            <div class="card-footer">
-              <button class="btn btn-cyan btn-sm" onclick="Part2Teams.openAssignModal(${t.teamId}, '${escape(t.teamName)}')">+ Assign Player</button>
-              <button class="btn btn-danger btn-sm" onclick="Part2Teams.deleteTeam(${t.teamId})">Disband</button>
-            </div>
-          </div>
-        `;
-      });
-      html += '</div>';
-      container.innerHTML = html;
-    } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
-    }
-  },
-
-  async deleteTeam(teamId) {
-    if (!confirm('Disband this team? Players will be disassociated automatically (SET NULL).')) return;
-    try {
-      await api.part2.deleteTeam(teamId);
-      App.toast('Team disbanded', 'success');
-      this.renderTeams(document.getElementById('part2-content-area'));
-      App.refreshStats();
-    } catch (err) {
-      App.toast('Error disbanding team: ' + err.message, 'error');
-    }
-  },
-
-  // ----------------------------------------------------
-  // Render Players
-  // ----------------------------------------------------
-  async renderPlayers(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Players...</div>';
-    try {
-      const players = await api.part2.getPlayers();
-      this.cachedPlayers = players;
-
       let html = `
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Player ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Age</th>
-                <th>Assigned Team</th>
-                <th>Joined Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-teams">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Team ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Squad Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Team Size <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Active Members <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Created Date <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
-      players.forEach(p => {
+
+      teams.forEach(t => {
+        const memberNames = (t.members && t.members.length > 0)
+          ? t.members.map(m => m.name).join(', ')
+          : '<span style="color:var(--text-dim); font-size:0.75rem;">None</span>';
+
         html += `
-          <tr>
-            <td><code>#${p.playerId}</code></td>
-            <td><strong>${p.name}</strong></td>
-            <td><code>${p.email}</code></td>
-            <td>${p.phone}</td>
-            <td>${p.age || 'N/A'}</td>
-            <td>${p.teamName ? `<span class="card-badge badge-medium">🛡️ ${p.teamName}</span>` : '<span style="color:var(--text-dim);">Free Agent</span>'}</td>
-            <td>${p.joinedDate || '—'}</td>
-            <td>
-              <button class="btn btn-secondary btn-sm" onclick="Part2Teams.changePlayerTeamPrompt(${p.playerId}, ${p.teamId || 'null'})">Change Team</button>
-              <button class="btn btn-danger btn-sm" onclick="Part2Teams.deletePlayer(${p.playerId})">Remove</button>
+          <tr data-searchable="${t.teamId} ${t.teamName} ${t.teamSize}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">TM-${String(t.teamId).padStart(3, '0')}</strong></td>
+            <td><strong>${t.teamName}</strong></td>
+            <td><strong>${t.teamSize}</strong> members</td>
+            <td><div style="max-width:340px; font-size:0.8rem; color:#334155;">${memberNames}</div></td>
+            <td><small style="color:var(--text-muted);">${t.createdAt ? t.createdAt.substring(0, 10) : 'Recent'}</small></td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-team-${t.teamId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-team-${t.teamId}">
+                <button class="kebab-item" onclick="Part2Teams.openAssignModal(${t.teamId}, '${encodeURIComponent(t.teamName)}')">
+                  ➕ Assign Player
+                </button>
+                <button class="kebab-item item-danger" onclick="Part2Teams.deleteTeam(${t.teamId})">
+                  🗑️ Disband Team
+                </button>
+              </div>
             </td>
           </tr>
         `;
       });
-      html += '</tbody></table></div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
-  async changePlayerTeamPrompt(playerId, currentTeamId) {
-    const teams = this.cachedTeams.length > 0 ? this.cachedTeams : await api.part2.getTeams();
-    let promptText = 'Select New Team ID (or enter 0 to remove from team):\n\n';
-    promptText += '0: Free Agent (No Team)\n';
-    teams.forEach(t => {
-      promptText += `${t.teamId}: ${t.teamName} (Current size: ${t.teamSize})\n`;
-    });
+  openAssignModal(teamId, encodedTeamName) {
+    App.closeAllKebabMenus();
+    const teamName = decodeURIComponent(encodedTeamName);
+    document.getElementById('assign-team-id').value = teamId;
+    document.getElementById('assign-modal-team-title').innerText = `Assign Player to "${teamName}"`;
 
-    const choice = prompt(promptText, currentTeamId || '0');
-    if (choice === null) return;
-    const newTeamId = parseInt(choice);
+    const select = document.getElementById('assign-player-select');
+    select.innerHTML = '<option value="">-- Choose Player --</option>';
+    if (this.cachedPlayers && this.cachedPlayers.length > 0) {
+      this.cachedPlayers.forEach(p => {
+        select.innerHTML += `<option value="${p.playerId}">${p.name} (${p.email}) - Team: ${p.teamName || 'Unassigned'}</option>`;
+      });
+    }
+    App.openModal('modal-assign-player');
+  },
+
+  async deleteTeam(teamId) {
+    App.closeAllKebabMenus();
+    if (!confirm(`Disband Team #${teamId}?`)) return;
+
     try {
-      await api.part2.assignPlayerToTeam(playerId, newTeamId > 0 ? newTeamId : null);
-      App.toast('Player assigned! Database trigger recalculated team sizes automatically.', 'success');
-      this.renderPlayers(document.getElementById('part2-content-area'));
+      await api.part2.deleteTeam(teamId);
+      App.toast('Team disbanded', 'success');
+      this.loadAll();
       App.refreshStats();
     } catch (err) {
-      App.toast('Error assigning player: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
+    }
+  },
+
+  // =========================================================================
+  // 2. PLAYERS DIRECTORY TABLE
+  // =========================================================================
+  async renderPlayers(container) {
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Players...</div></div>';
+    try {
+      const players = await api.part2.getPlayers();
+      this.cachedPlayers = players || [];
+      App.updateToolbarCount(this.cachedPlayers.length);
+
+      if (!players || players.length === 0) {
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No players registered. Click (+) to register a player.</div>`;
+        return;
+      }
+
+      let html = `
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-players">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Player ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Full Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Email <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Phone <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Age <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Squad <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
+
+      players.forEach(p => {
+        html += `
+          <tr data-searchable="${p.playerId} ${p.name} ${p.email} ${p.phone} ${p.teamName || ''}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">PL-${String(p.playerId).padStart(3, '0')}</strong></td>
+            <td><strong>${p.name}</strong></td>
+            <td><a href="mailto:${p.email}" style="color:var(--text-dark); text-decoration:none;">${p.email}</a></td>
+            <td>${p.phone}</td>
+            <td>${p.age || '—'} yrs</td>
+            <td>${p.teamName ? p.teamName : '<span style="color:var(--text-dim);">Unassigned</span>'}</td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-player-${p.playerId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-player-${p.playerId}">
+                <button class="kebab-item" onclick="Part2Teams.promptTransferPlayer(${p.playerId}, '${encodeURIComponent(p.name)}')">
+                  🔄 Transfer Squad
+                </button>
+                <button class="kebab-item item-danger" onclick="Part2Teams.deletePlayer(${p.playerId})">
+                  🗑️ Delete Player
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table></div></div>`;
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
+    }
+  },
+
+  async promptTransferPlayer(playerId, encodedName) {
+    App.closeAllKebabMenus();
+    const name = decodeURIComponent(encodedName);
+    const teamPrompt = prompt(`Assign player "${name}" to Team ID (leave blank to unassign):`);
+    if (teamPrompt === null) return;
+
+    try {
+      const targetTeamId = teamPrompt.trim() === '' ? null : parseInt(teamPrompt);
+      await api.part2.assignPlayerToTeam(playerId, targetTeamId);
+      App.toast(`Player updated`, 'success');
+      this.loadAll();
+      App.refreshStats();
+    } catch (err) {
+      App.toast('Transfer error: ' + err.message, 'error');
     }
   },
 
   async deletePlayer(playerId) {
-    if (!confirm('Remove this player? Database triggers will update team size.')) return;
+    App.closeAllKebabMenus();
+    if (!confirm(`Delete Player #${playerId}?`)) return;
+
     try {
       await api.part2.deletePlayer(playerId);
-      App.toast('Player removed and team size updated via trigger.', 'success');
-      this.renderPlayers(document.getElementById('part2-content-area'));
+      App.toast('Player removed', 'success');
+      this.loadAll();
       App.refreshStats();
     } catch (err) {
-      App.toast('Error removing player: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
     }
   },
 
-  // ----------------------------------------------------
-  // Render Rosters View (Calls SQL view: team_members)
-  // ----------------------------------------------------
+  // =========================================================================
+  // 3. SQL VIEW: team_members TABLE
+  // =========================================================================
   async renderRostersView(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading SQL View `team_members`...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Roster View...</div></div>';
     try {
       const rosters = await api.part2.getRostersView();
+      this.cachedRosters = rosters || [];
+      App.updateToolbarCount(this.cachedRosters.length);
+
+      if (!rosters || rosters.length === 0) {
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No records in team_members view.</div>`;
+        return;
+      }
+
       let html = `
-        <div style="margin-bottom: 1rem; display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:0.85rem; color:var(--accent-cyan); font-family:var(--font-mono);">
-            ⚡ Direct Query from SQL View: <code>CREATE VIEW team_members AS SELECT team_id, player_id, joined_date FROM players ...</code>
-          </span>
-        </div>
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Team ID</th>
-                <th>Team Name</th>
-                <th>Player ID</th>
-                <th>Player Name</th>
-                <th>Joined Date</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-rosters">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Team ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Team Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Player Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Email <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Phone <span class="th-arrow">▾</span></th>
+                </tr>
+              </thead>
+              <tbody>
       `;
+
       rosters.forEach(r => {
         html += `
-          <tr>
-            <td><code>#${r.teamId}</code></td>
-            <td><strong style="color:var(--accent-purple);">${r.teamName}</strong></td>
-            <td><code>#${r.playerId}</code></td>
-            <td><strong>${r.playerName}</strong></td>
-            <td><code>${r.joinedDate || 'Active'}</code></td>
+          <tr data-searchable="${r.teamId || ''} ${r.teamName || ''} ${r.playerName || ''} ${r.email || ''}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">TM-${r.teamId}</strong></td>
+            <td><strong>${r.teamName}</strong></td>
+            <td>${r.playerName}</td>
+            <td>${r.email}</td>
+            <td><code>${r.phone}</code></td>
           </tr>
         `;
       });
-      html += '</tbody></table></div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
-  },
-
-  openAssignModal(teamId, unescapedTeamName) {
-    const teamName = unescape(unescapedTeamName);
-    const select = document.getElementById('assign-player-select');
-    if (!select) return;
-
-    select.innerHTML = '<option value="">Select a player...</option>';
-    this.cachedPlayers.forEach(p => {
-      select.innerHTML += `<option value="${p.playerId}">${p.name} (${p.email}) - Current: ${p.teamName || 'None'}</option>`;
-    });
-
-    document.getElementById('assign-team-id').value = teamId;
-    document.getElementById('assign-modal-team-title').innerText = `Assign Player to "${teamName}"`;
-    App.openModal('modal-assign-player');
   }
 };
