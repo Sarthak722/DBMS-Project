@@ -1,12 +1,18 @@
 /**
- * Part 1: Venues & Mystery Rooms Module
- * Manages Physical Branches, Escape Rooms, Staff Roster, and Room Clues.
+ * Venues & Rooms Module
+ * Clean, plain, working CRUD tables for:
+ * - Escape Rooms
+ * - Branches & Venues
+ * - Staff Members & Game Masters
+ * - Puzzle Clues
  */
 
 const Part1Venues = {
   currentSubTab: 'rooms',
   cachedBranches: [],
   cachedRooms: [],
+  cachedStaff: [],
+  cachedClues: [],
 
   async init() {
     this.bindEvents();
@@ -14,7 +20,6 @@ const Part1Venues = {
   },
 
   bindEvents() {
-    // Sub-tab navigation
     document.querySelectorAll('[data-subtab-part1]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll('[data-subtab-part1]').forEach(b => b.classList.remove('active'));
@@ -31,7 +36,7 @@ const Part1Venues = {
       this.cachedRooms = await api.part1.getRooms();
       this.renderCurrentSubTab();
     } catch (err) {
-      App.toast('Failed to load venue data: ' + err.message, 'error');
+      console.warn('Venues load error:', err);
     }
   },
 
@@ -50,264 +55,338 @@ const Part1Venues = {
     }
   },
 
-  // ----------------------------------------------------
-  // Render Rooms
-  // ----------------------------------------------------
+  // =========================================================================
+  // 1. ESCAPE ROOMS TABLE
+  // =========================================================================
   async renderRooms(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Rooms...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Rooms...</div></div>';
     try {
       const rooms = await api.part1.getRooms();
-      this.cachedRooms = rooms;
+      this.cachedRooms = rooms || [];
+      App.updateToolbarCount(this.cachedRooms.length);
 
       if (!rooms || rooms.length === 0) {
-        container.innerHTML = '<div class="custom-card" style="text-align:center;">No escape rooms found. Click "Add Room" to create one.</div>';
+        container.innerHTML = `
+          <div class="table-card" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+            No escape rooms found. Click <strong>(+)</strong> above to create one.
+          </div>
+        `;
         return;
       }
 
-      let html = '<div class="card-grid">';
-      rooms.forEach(r => {
-        const diffClass = `badge-${r.difficulty.toLowerCase()}`;
-        const statusClass = `badge-${r.status.toLowerCase()}`;
+      let html = `
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-rooms">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Room ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Theme Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Branch / Venue <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Difficulty <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Capacity <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Base Price <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Duration <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Status <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Clues <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+      `;
 
+      rooms.forEach(r => {
         html += `
-          <div class="custom-card">
-            <div>
-              <div class="card-top">
-                <span class="card-badge ${diffClass}">${r.difficulty}</span>
-                <span class="card-badge ${statusClass}">${r.status}</span>
+          <tr data-searchable="${r.roomId} ${r.themeName} ${r.branchName || ''} ${r.difficulty} ${r.status}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">RM-${String(r.roomId).padStart(3, '0')}</strong></td>
+            <td><strong>${r.themeName}</strong></td>
+            <td>📍 ${r.branchName || 'Branch #' + r.branchId}</td>
+            <td><span class="badge badge-gray">${r.difficulty}</span></td>
+            <td>${r.capacity} players</td>
+            <td><strong>$${parseFloat(r.basePrice).toFixed(2)}</strong></td>
+            <td>${r.duration} mins</td>
+            <td><span class="badge badge-gray">${r.status}</span></td>
+            <td>${r.clueCount || 0} clues</td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-room-${r.roomId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-room-${r.roomId}">
+                <button class="kebab-item" onclick="Part1Venues.promptStatusChange(${r.roomId}, '${r.status}')">
+                  ✏️ Change Status
+                </button>
+                <button class="kebab-item item-danger" onclick="Part1Venues.deleteRoom(${r.roomId})">
+                  🗑️ Delete Room
+                </button>
               </div>
-              <h3 class="card-title">${r.themeName}</h3>
-              <div class="card-subtitle">
-                <span>📍 ${r.branchName || 'Branch #' + r.branchId}</span>
-              </div>
-              <div class="card-meta-list">
-                <div class="meta-item">
-                  <span class="meta-label">Team Capacity</span>
-                  <span class="meta-value">${r.capacity} Players Max</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-label">Mission Duration</span>
-                  <span class="meta-value">${r.duration} Mins</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-label">Base Price</span>
-                  <span class="meta-value">$${parseFloat(r.basePrice).toFixed(2)}</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-label">Clues Loaded</span>
-                  <span class="meta-value">${r.clueCount || 0} Puzzles</span>
-                </div>
-              </div>
-            </div>
-            <div class="card-footer">
-              <select class="form-control" style="width: auto; padding: 0.3rem 0.5rem; font-size: 0.8rem;" onchange="Part1Venues.changeRoomStatus(${r.roomId}, this.value)">
-                <option value="Available" ${r.status === 'Available' ? 'selected' : ''}>Available</option>
-                <option value="Occupied" ${r.status === 'Occupied' ? 'selected' : ''}>Occupied</option>
-                <option value="Maintenance" ${r.status === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
-                <option value="Inactive" ${r.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-              </select>
-              <button class="btn btn-danger btn-sm" onclick="Part1Venues.deleteRoom(${r.roomId})">Delete</button>
-            </div>
-          </div>
+            </td>
+          </tr>
         `;
       });
-      html += '</div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
-  async changeRoomStatus(roomId, newStatus) {
+  async promptStatusChange(roomId, currentStatus) {
+    App.closeAllKebabMenus();
+    const newStatus = prompt(`Change status for Room #${roomId} (Available / Occupied / Maintenance / Inactive):`, currentStatus);
+    if (!newStatus || newStatus === currentStatus) return;
+
     try {
       await api.part1.updateRoomStatus(roomId, newStatus);
-      App.toast(`Room status changed to ${newStatus}`, 'success');
+      App.toast(`Room status updated to ${newStatus}`, 'success');
+      this.renderRooms(document.getElementById('part1-content-area'));
       App.refreshStats();
     } catch (err) {
-      App.toast('Failed to update status: ' + err.message, 'error');
+      App.toast('Update failed: ' + err.message, 'error');
     }
   },
 
   async deleteRoom(roomId) {
-    if (!confirm('Are you sure you want to delete this room? Associated clues and bookings will be affected.')) return;
+    App.closeAllKebabMenus();
+    if (!confirm(`Delete Room #${roomId}?`)) return;
+
     try {
       await api.part1.deleteRoom(roomId);
-      App.toast('Room deleted successfully', 'success');
+      App.toast('Room deleted', 'success');
       this.renderRooms(document.getElementById('part1-content-area'));
       App.refreshStats();
     } catch (err) {
-      App.toast('Failed to delete room: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
     }
   },
 
-  // ----------------------------------------------------
-  // Render Branches
-  // ----------------------------------------------------
+  // =========================================================================
+  // 2. PHYSICAL BRANCHES TABLE
+  // =========================================================================
   async renderBranches(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Branches...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Branches...</div></div>';
     try {
       const branches = await api.part1.getBranches();
-      this.cachedBranches = branches;
+      this.cachedBranches = branches || [];
+      App.updateToolbarCount(this.cachedBranches.length);
+
+      if (!branches || branches.length === 0) {
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No branches registered. Click (+) to add one.</div>`;
+        return;
+      }
 
       let html = `
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Branch ID</th>
-                <th>Venue Name</th>
-                <th>City & State</th>
-                <th>Street Address</th>
-                <th>ZIP</th>
-                <th>Contact Phone</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-branches">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Branch ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Venue Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">City &amp; State <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Street Address <span class="th-arrow">▾</span></th>
+                  <th class="sortable">ZIP Code <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Phone <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
+
       branches.forEach(b => {
         html += `
-          <tr>
-            <td><strong style="color:var(--accent-cyan);">#${b.branchId}</strong></td>
+          <tr data-searchable="${b.branchId} ${b.name} ${b.city} ${b.state} ${b.zip} ${b.phone}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">BR-${String(b.branchId).padStart(3, '0')}</strong></td>
             <td><strong>${b.name}</strong></td>
             <td>${b.city}, ${b.state}</td>
             <td>${b.street}</td>
             <td><code>${b.zip}</code></td>
-            <td><a href="tel:${b.phone}" style="color:var(--accent-emerald); text-decoration:none;">${b.phone}</a></td>
-            <td>
-              <button class="btn btn-danger btn-sm" onclick="Part1Venues.deleteBranch(${b.branchId})">Delete</button>
+            <td><a href="tel:${b.phone}" style="color:var(--text-dark); font-weight:600; text-decoration:none;">${b.phone}</a></td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-branch-${b.branchId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-branch-${b.branchId}">
+                <button class="kebab-item item-danger" onclick="Part1Venues.deleteBranch(${b.branchId})">
+                  🗑️ Delete Branch
+                </button>
+              </div>
             </td>
           </tr>
         `;
       });
-      html += '</tbody></table></div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
   async deleteBranch(branchId) {
-    if (!confirm('Delete this branch? Warning: Rooms and staff assigned here might prevent deletion (RESTRICT FK).')) return;
+    App.closeAllKebabMenus();
+    if (!confirm(`Delete Branch #${branchId}?`)) return;
+
     try {
       await api.part1.deleteBranch(branchId);
-      App.toast('Branch deleted successfully', 'success');
+      App.toast('Branch deleted', 'success');
       this.renderBranches(document.getElementById('part1-content-area'));
       App.refreshStats();
     } catch (err) {
-      App.toast('Error deleting branch: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
     }
   },
 
-  // ----------------------------------------------------
-  // Render Staff
-  // ----------------------------------------------------
+  // =========================================================================
+  // 3. STAFF MEMBERS TABLE
+  // =========================================================================
   async renderStaff(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Staff...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Staff...</div></div>';
     try {
       const staffList = await api.part1.getStaff();
+      this.cachedStaff = staffList || [];
+      App.updateToolbarCount(this.cachedStaff.length);
+
+      if (!staffList || staffList.length === 0) {
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No staff members found. Click (+) to register staff.</div>`;
+        return;
+      }
+
       let html = `
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Staff ID</th>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Assigned Branch</th>
-                <th>Pay Schedule</th>
-                <th>Shift Hours</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-staff">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Staff ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Full Name <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Role <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Branch <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Pay Schedule <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Shift Hours <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
+
       staffList.forEach(s => {
         html += `
-          <tr>
-            <td><code>#${s.staffId}</code></td>
+          <tr data-searchable="${s.staffId} ${s.name} ${s.role} ${s.branchName} ${s.payTime}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">ST-${String(s.staffId).padStart(3, '0')}</strong></td>
             <td><strong>${s.name}</strong></td>
-            <td><span class="card-badge badge-medium">${s.role}</span></td>
-            <td>${s.branchName}</td>
+            <td>${s.role}</td>
+            <td>📍 ${s.branchName}</td>
             <td>${s.payTime}</td>
             <td><code>${s.inTime} - ${s.outTime}</code></td>
-            <td>
-              <button class="btn btn-danger btn-sm" onclick="Part1Venues.deleteStaff(${s.staffId})">Remove</button>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-staff-${s.staffId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-staff-${s.staffId}">
+                <button class="kebab-item item-danger" onclick="Part1Venues.deleteStaff(${s.staffId})">
+                  🗑️ Remove Staff
+                </button>
+              </div>
             </td>
           </tr>
         `;
       });
-      html += '</tbody></table></div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
   async deleteStaff(staffId) {
-    if (!confirm('Remove this staff member?')) return;
+    App.closeAllKebabMenus();
+    if (!confirm(`Remove staff member #${staffId}?`)) return;
+
     try {
       await api.part1.deleteStaff(staffId);
-      App.toast('Staff removed', 'success');
+      App.toast('Staff member removed', 'success');
       this.renderStaff(document.getElementById('part1-content-area'));
+      App.refreshStats();
     } catch (err) {
-      App.toast('Error removing staff: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
     }
   },
 
-  // ----------------------------------------------------
-  // Render Clues
-  // ----------------------------------------------------
+  // =========================================================================
+  // 4. PUZZLE CLUES TABLE
+  // =========================================================================
   async renderClues(container) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem;"><span class="pulse-dot"></span> Loading Clues...</div>';
+    container.innerHTML = '<div class="table-card"><div style="text-align:center; padding:2rem;"><span class="pulse-dot"></span> Loading Clues...</div></div>';
     try {
       const clues = await api.part1.getClues();
+      this.cachedClues = clues || [];
+      App.updateToolbarCount(this.cachedClues.length);
+
+      if (!clues || clues.length === 0) {
+        container.innerHTML = `<div class="table-card" style="padding:2.5rem; text-align:center;">No puzzle clues recorded. Click (+) to add a clue.</div>`;
+        return;
+      }
+
       let html = `
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Clue ID</th>
-                <th>Room Theme</th>
-                <th>Description</th>
-                <th>Hint Text</th>
-                <th>Prerequisite Clue</th>
-                <th>Points</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="table-card">
+          <div class="table-responsive">
+            <table class="crud-table" id="table-clues">
+              <thead>
+                <tr>
+                  <th class="col-checkbox"><input type="checkbox" class="table-checkbox" onclick="App.toggleAllCheckboxes(this)"></th>
+                  <th class="sortable">Clue ID <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Chamber <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Description <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Hint Text <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Prerequisite <span class="th-arrow">▾</span></th>
+                  <th class="sortable">Points <span class="th-arrow">▾</span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
+
       clues.forEach(c => {
         html += `
-          <tr>
-            <td><code>#${c.clueId}</code></td>
+          <tr data-searchable="${c.clueId} ${c.roomTheme} ${c.description} ${c.hint}">
+            <td class="col-checkbox"><input type="checkbox" class="table-checkbox"></td>
+            <td><strong class="record-id">CL-${String(c.clueId).padStart(3, '0')}</strong></td>
             <td><strong>${c.roomTheme}</strong></td>
             <td>${c.description}</td>
-            <td style="color:var(--accent-amber); font-style:italic;">"${c.hint}"</td>
-            <td>${c.prereqClueId ? `<span class="card-badge badge-hard">Requires Clue #${c.prereqClueId}</span>` : '<span style="color:var(--text-dim);">None (Entry Clue)</span>'}</td>
-            <td><strong style="color:var(--accent-cyan);">+${c.points} pts</strong></td>
-            <td>
-              <button class="btn btn-danger btn-sm" onclick="Part1Venues.deleteClue(${c.clueId})">Delete</button>
+            <td style="color:var(--text-muted); font-size:0.78rem;">${c.hint}</td>
+            <td>${c.prereqClueId ? `Requires CL-${String(c.prereqClueId).padStart(3, '0')}` : 'None'}</td>
+            <td><strong>${c.points} pts</strong></td>
+            <td class="col-actions">
+              <button class="btn-kebab" onclick="App.toggleKebabMenu(event, 'kebab-clue-${c.clueId}')">⋮</button>
+              <div class="kebab-menu" id="kebab-clue-${c.clueId}">
+                <button class="kebab-item item-danger" onclick="Part1Venues.deleteClue(${c.clueId})">
+                  🗑️ Delete Clue
+                </button>
+              </div>
             </td>
           </tr>
         `;
       });
-      html += '</tbody></table></div>';
+
+      html += `</tbody></table></div></div>`;
       container.innerHTML = html;
     } catch (err) {
-      container.innerHTML = `<div class="custom-card" style="color:var(--accent-rose);">Error: ${err.message}</div>`;
+      container.innerHTML = `<div class="table-card" style="padding:2rem; color:var(--color-red);">Error: ${err.message}</div>`;
     }
   },
 
   async deleteClue(clueId) {
-    if (!confirm('Delete this clue?')) return;
+    App.closeAllKebabMenus();
+    if (!confirm(`Delete Clue #${clueId}?`)) return;
+
     try {
       await api.part1.deleteClue(clueId);
       App.toast('Clue deleted', 'success');
       this.renderClues(document.getElementById('part1-content-area'));
     } catch (err) {
-      App.toast('Error deleting clue: ' + err.message, 'error');
+      App.toast('Delete error: ' + err.message, 'error');
     }
   }
 };

@@ -65,7 +65,7 @@ DROP TABLE IF EXISTS branches;
     CONSTRAINT pk_staff PRIMARY KEY (staff_id),
     CONSTRAINT fk_staff_branch 
         FOREIGN KEY (branch_id) REFERENCES branches(branch_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE
+        ON DELETE CASCADE ON UPDATE CASCADE
 );
 
  -- 3. ROOM ENTITY
@@ -164,13 +164,13 @@ DROP TABLE IF EXISTS branches;
     CONSTRAINT uq_bookings_session_id UNIQUE (session_id),
     CONSTRAINT fk_bookings_staff 
         FOREIGN KEY (staff_id) REFERENCES staff(staff_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_bookings_room 
         FOREIGN KEY (room_id) REFERENCES rooms(room_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_bookings_team 
         FOREIGN KEY (team_id) REFERENCES teams(team_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT chk_booking_slots CHECK (slot_end_time > start_time)
 );
 
@@ -371,13 +371,13 @@ CREATE TABLE IF NOT EXISTS bookings (
     CONSTRAINT uq_bookings_session_id UNIQUE (session_id),
     CONSTRAINT fk_bookings_staff 
         FOREIGN KEY (staff_id) REFERENCES staff(staff_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_bookings_room 
         FOREIGN KEY (room_id) REFERENCES rooms(room_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT fk_bookings_team 
         FOREIGN KEY (team_id) REFERENCES teams(team_id) 
-        ON DELETE RESTRICT ON UPDATE CASCADE,
+        ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT chk_booking_slots CHECK (slot_end_time > start_time)
 );
 

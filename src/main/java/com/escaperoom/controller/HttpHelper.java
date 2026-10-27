@@ -32,6 +32,18 @@ public class HttpHelper {
         sendJsonResponse(exchange, statusCode, err);
     }
 
+    public static void handleException(HttpExchange exchange, Exception e) throws IOException {
+        e.printStackTrace();
+        String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+        if (e instanceof java.sql.SQLIntegrityConstraintViolationException || msg.contains("foreign key constraint fails") || msg.contains("constraint fails")) {
+            sendError(exchange, 400, "Database Integrity Constraint: Cannot delete or update this record because related records depend on it.");
+        } else if (msg.contains("Duplicate entry")) {
+            sendError(exchange, 400, "Duplicate Entry: A record with this unique value already exists.");
+        } else {
+            sendError(exchange, 500, "Database Error: " + msg);
+        }
+    }
+
     public static void sendSuccess(HttpExchange exchange, String message, Object payload) throws IOException {
         Map<String, Object> res = new HashMap<>();
         res.put("success", true);
